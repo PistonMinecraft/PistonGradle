@@ -1,0 +1,25 @@
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+enableFeaturePreview('TYPESAFE_PROJECT_ACCESSORS')
+
+rootProject.name = 'PistonGradle'
+
+include 'plugin'
+
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositories {
+        maven {
+            name = 'Minecraft Decompiler'
+            url = 'https://maven.pkg.github.com/MaxPixelStudios/MinecraftDecompiler'
+            credentials {
+                username = System.getenv("GH_PACKAGES_USERNAME")
+                password = System.getenv("GH_PACKAGES_TOKEN")
+            }
+            content {
+                includeModule('cn.maxpixel', 'minecraft-decompiler')
+            }
+        }
+        mavenCentral()
+    }
+}
