@@ -72,6 +72,7 @@ public class VanillaMinecraftCache {
     private VersionJson loadVersionJson(String id) {
         Path path = getVersionDir(id).resolve(id + ".json");
         var version = getVersionManifest().versions().get(id);
+        if (version == null) throw new IllegalArgumentException("u dumb. there's no such mc version");
         try {
             if (!FileUtil.verify(path, version.sha1())) {
                 var request = HttpRequest.newBuilder(new URI(version.url())).build();

@@ -1,15 +1,14 @@
 package org.pistonmc.build.gradle;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Writer;
-import java.io.FileWriter;
-import java.nio.file.Files;
-import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.BuildResult;
+import org.gradle.testkit.runner.GradleRunner;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import static org.junit.jupiter.api.Assertions.*;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 
 /**
  * A simple functional test for the 'org.pistonmc.build.gradle.greeting' plugin.
@@ -35,8 +34,8 @@ class PistonGradlePluginFunctionalTest {
                 
                 minecraft {
                   version = '1.20.1'
+                  mapping = official()
                   toolchains {
-                    mapping official()
                     vanilla()
                   }
                 }
@@ -46,7 +45,7 @@ class PistonGradlePluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments("--stacktrace", "--info");
+        runner.withArguments(Constants.SETUP_DEV_ENV_TASK, "dependencies", "--stacktrace", "--info");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
 

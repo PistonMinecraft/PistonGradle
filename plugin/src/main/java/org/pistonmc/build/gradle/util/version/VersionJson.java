@@ -7,13 +7,18 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.pistonmc.build.gradle.PistonGradlePlugin;
+import org.pistonmc.build.gradle.extension.impl.MinecraftExtensionImpl;
+import org.pistonmc.build.gradle.util.OSName;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 public record VersionJson(Map<String, List<Argument>> arguments, AssetIndex assetIndex, String assets, int complianceLevel, Map<String, GameDownload> downloads,
                           String id, JavaVersion javaVersion, List<Library> libraries, Map<String, LoggingConfig> logging, String mainClass,
@@ -61,12 +66,12 @@ public record VersionJson(Map<String, List<Argument>> arguments, AssetIndex asse
         public record File(String id, String sha1, String size, String url) {}
     }
 
-    public record Library(Downloads downloads, String name, Map<String, String> natives, List<Rule> rules, Extract extract) {
-        public record Downloads(Artifact artifact, Map<String, Artifact> classifiers) {
-            public record Artifact(String path, String sha1, int size, String url) {}
+    public record Library(@NotNull Downloads downloads, @NotNull String name, @Nullable Map<OSName, String> natives, @Nullable List<Rule> rules, @Nullable Extract extract) {
+        public record Downloads(@Nullable Artifact artifact, @Nullable Map<String, Artifact> classifiers) {
+            public record Artifact(@NotNull String path, @NotNull String sha1, int size, @NotNull String url) {}
         }
 
-        public record Extract(List<String> exclude) {}
+        public record Extract(@NotNull List<String> exclude) {}
     }
 
     public record Rule(Action action, OS os, Features features) {
@@ -77,5 +82,23 @@ public record VersionJson(Map<String, List<Argument>> arguments, AssetIndex asse
         public record OS(String name, String arch, String version) {}
 
         public record Features(@SerializedName("is_demo_user") boolean isDemoUser, @SerializedName("has_custom_resolution") boolean hasCustomResolution) {}
+
+        public boolean isAllow() {
+            return isAllow(null);
+        }
+
+        public boolean isAllow(@Nullable MinecraftExtensionImpl ext) {
+            boolean ret = true;
+            if (os != null) {// FIXME: Is it REALLY determined like this?
+                ret &= os.name == null || OSName.getCurrent().toString().equals(os.name);
+                ret &= os.arch == null || Pattern.compile(os.arch).matcher(System.getProperty("os.arch")).find();
+                ret &= os.version == null || Pattern.compile(os.version).matcher(System.getProperty("os.version")).find();
+            }
+            if (features != null && ext != null) {
+                ret &= features.isDemoUser && ext.isDemoUser();
+                ret &= features.hasCustomResolution && ext.isCustomResolution();
+            }
+            return (action == Action.ALLOW) == ret;
+        }
     }
 }
