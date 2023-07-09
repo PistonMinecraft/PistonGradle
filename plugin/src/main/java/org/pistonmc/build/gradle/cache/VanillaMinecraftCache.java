@@ -8,6 +8,7 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.provider.Provider;
 import org.pistonmc.build.gradle.Constants;
 import org.pistonmc.build.gradle.PistonGradlePlugin;
+import org.pistonmc.build.gradle.util.AssetIndex;
 import org.pistonmc.build.gradle.util.version.VersionJson;
 import org.pistonmc.build.gradle.util.version.VersionManifest;
 
@@ -26,6 +27,8 @@ public class VanillaMinecraftCache {
     private static final HttpRequest MANIFEST_REQUEST = HttpRequest.newBuilder(URI.create("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json")).build();
     private final Logger logger;
     private final Path cacheDir;
+    public final Path assetsDir;
+    public final Path versionsDir;
     private final Path versionManifestFile;
     private final Object2ObjectOpenHashMap<String, VersionJson> versionJsonCache = new Object2ObjectOpenHashMap<>();
     private final Provider<Boolean> forceUpdateVersionManifest;
@@ -35,7 +38,9 @@ public class VanillaMinecraftCache {
         var providers = project.getProviders();
         this.cacheDir = project.getGradle().getGradleUserHomeDir().toPath().resolve(Constants.CACHE_DIR).resolve("vanilla_minecraft").toAbsolutePath().normalize();
         logger.info("Vanilla Minecraft cache dir: {}", cacheDir);
-        this.versionManifestFile = cacheDir.resolve("version_manifest_v2.json");
+        this.assetsDir = cacheDir.resolve("assets");
+        this.versionsDir = cacheDir.resolve("versions");
+        this.versionManifestFile = versionsDir.resolve("version_manifest_v2.json");
         this.forceUpdateVersionManifest = providers.gradleProperty(Constants.FORCE_UPDATE_VERSION_MANIFEST).map(Boolean::parseBoolean).orElse(false);
     }
 
@@ -62,7 +67,11 @@ public class VanillaMinecraftCache {
     }
 
     public Path getVersionDir(String id) {
-        return cacheDir.resolve(id);
+        return versionsDir.resolve(id);
+    }
+
+    public Path getAssetDir(String id) {
+        return assetsDir.resolve(id);
     }
 
     public VersionJson getVersionJson(String id) {
@@ -136,5 +145,47 @@ public class VanillaMinecraftCache {
 
     public File getServerMappingsFile(String id) {
         return getServerMappings(id).toFile();
+    }
+
+    public String getLoggingConfig(VersionJson.LoggingConfig.File file) {
+        Path path = getAssetDir("logging").resolve(file.id());
+        try {
+            if (!FileUtil.verify(path, file.sha1(), file.size())) {
+                var request = HttpRequest.newBuilder(new URI(file.url())).build();
+                logger.info("Downloading logging config to {}...", path);
+                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.ensureFileExist(path),
+                        StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+                logger.info("Downloaded logging config");
+            }
+        } catch (IOException | URISyntaxException | InterruptedException e) {
+            throw Utils.wrapInRuntime(e);
+        }
+        return path.toString();
+    }
+
+    public AssetIndex getAssetIndex(String id) {
+        return getAssetIndex(getVersionJson(id).assetIndex());
+    }
+
+    public AssetIndex getAssetIndex(VersionJson.AssetIndex assetIndex) {
+        Path path = getAssetDir("indexes").resolve(assetIndex.id() + ".json");
+        try {
+            if (!FileUtil.verify(path, assetIndex.sha1(), assetIndex.size())) {
+                var request = HttpRequest.newBuilder(new URI(assetIndex.url())).build();
+                logger.info("Downloading asset index to {}...", path);
+                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.ensureFileExist(path),
+                        StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+                logger.info("Downloaded asset index config");
+            }
+            try (var reader = Files.newBufferedReader(path)) {
+                return PistonGradlePlugin.GSON.fromJson(reader, AssetIndex.class);
+            }
+        } catch (IOException | URISyntaxException | InterruptedException e) {
+            throw Utils.wrapInRuntime(e);
+        }
+    }
+
+    public Path getAssetPath(String hash) {
+        return getAssetDir("objects").resolve(hash.substring(0, 2)).resolve(hash);
     }
 }

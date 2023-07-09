@@ -38,6 +38,11 @@ class PistonGradlePluginFunctionalTest {
                   toolchains {
                     vanilla()
                   }
+                  runs {
+                    vanillaClient(org.pistonmc.build.gradle.run.ClientRunConfig) {
+                      mainClass = 'net.minecraft.client.main.Main'
+                    }
+                  }
                 }
                 """);
 
@@ -45,7 +50,7 @@ class PistonGradlePluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments(Constants.SETUP_DEV_ENV_TASK, "dependencies", "--stacktrace", "--info");
+        runner.withArguments(Constants.SETUP_DEV_ENV_TASK, "runVanillaClient", "--stacktrace", "--info");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
 

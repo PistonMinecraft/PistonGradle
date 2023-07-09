@@ -8,16 +8,18 @@ import org.pistonmc.build.gradle.cache.VanillaMinecraftCache;
 import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.extension.ModdingToolchainSpec;
 import org.pistonmc.build.gradle.mapping.MappingConfig;
+import org.pistonmc.build.gradle.run.ClientRunConfig;
+import org.pistonmc.build.gradle.run.DataRunConfig;
+import org.pistonmc.build.gradle.run.ServerRunConfig;
+import org.pistonmc.build.gradle.run.impl.ClientRunConfigImpl;
+import org.pistonmc.build.gradle.run.impl.DataRunConfigImpl;
+import org.pistonmc.build.gradle.run.impl.ServerRunConfigImpl;
 
 import javax.inject.Inject;
 
 public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     private final VanillaMinecraftCache vmc;
     private final ModdingToolchainSpec toolchains;
-    private boolean demoUser;
-    private boolean customResolution;
-    private int width;
-    private int height;
 
     @Inject
     public abstract ObjectFactory getObjects();
@@ -28,34 +30,9 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     public MinecraftExtensionImpl(VanillaMinecraftCache vmc) {
         this.vmc = vmc;
         this.toolchains = getObjects().newInstance(ModdingToolchainSpecImpl.class);
-    }
-
-    @Override
-    public void asDemoUser() {
-        this.demoUser = true;
-    }
-
-    public boolean isDemoUser() {
-        return demoUser;
-    }
-
-    @Override
-    public void withCustomResolution(int width, int height) {
-        this.customResolution = true;
-        this.width = width;
-        this.height = height;
-    }
-
-    public boolean isCustomResolution() {
-        return customResolution;
-    }
-
-    public int getWidth() {
-        return width;
-    }
-
-    public int getHeight() {
-        return height;
+        getRuns().registerFactory(ClientRunConfig.class, name -> getObjects().newInstance(ClientRunConfigImpl.class, name));
+        getRuns().registerFactory(DataRunConfig.class, name -> getObjects().newInstance(DataRunConfigImpl.class, name));
+        getRuns().registerFactory(ServerRunConfig.class, name -> getObjects().newInstance(ServerRunConfigImpl.class, name));
     }
 
     @Override

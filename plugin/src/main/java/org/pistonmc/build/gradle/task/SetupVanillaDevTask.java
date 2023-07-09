@@ -28,7 +28,6 @@ public abstract class SetupVanillaDevTask extends DefaultTask {
         var config = getMappingConfig().get();
         MinecraftDecompiler mcd = new MinecraftDecompiler(
                 new MinecraftDecompiler.OptionBuilder(getInputJar().get().getAsFile().toPath())
-                        .doNotIncludeOthers()
                         .withMapping(new ClassifiedMappingReader<>(config.getType().get(),
                                 new FileReader(config.getMappings().get().getAsFile(), StandardCharsets.UTF_8)))
                         .output(getOutputJar().get().getAsFile().toPath())

@@ -24,4 +24,12 @@ public class GeneratedRepo {
     public Provider<RegularFile> getPath(String group, String artifactId, String version) {
         return baseDir.map(dir -> dir.file(ArtifactUtil.getPath(group, artifactId, version)));
     }
+
+    public Provider<RegularFile> getPath(String group, String artifactId, String version, String classifier) {
+        return baseDir.map(dir -> dir.file(ArtifactUtil.getPath(group, artifactId, version, classifier)));
+    }
+
+    public Provider<RegularFile> getPath(String group, String artifactId, String version, String classifier, String extension) {
+        return baseDir.map(dir -> dir.file(ArtifactUtil.getPath(group, artifactId, version, classifier, extension)));
+    }
 }
