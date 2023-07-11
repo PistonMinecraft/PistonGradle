@@ -1,6 +1,8 @@
 package org.pistonmc.build.gradle;
 
 public interface Constants {
+    String PISTON_GRADLE = "PistonGradle";
+    String VERSION = "0.1-SNAPSHOT";
     String NAME = "piston_gradle";
     String PACKAGE_NAME = Constants.class.getPackageName();
     String GHP_USERNAME = "GHP_USERNAME";

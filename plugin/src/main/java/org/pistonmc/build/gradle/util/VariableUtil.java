@@ -7,7 +7,10 @@ import java.util.Map;
 
 public class VariableUtil {
     public static List<String> replaceVariables(List<String> args, Map<String, String> variables) {
-        var ret = new ObjectArrayList<String>(args.size());
+        return replaceVariables(args, variables, new ObjectArrayList<>(args.size()));
+    }
+
+    public static List<String> replaceVariables(List<String> args, Map<String, String> variables, List<String> target) {
         for (String arg : args) {
             StringBuilder sb = new StringBuilder(arg.length());
             int last = 0;
@@ -21,8 +24,8 @@ public class VariableUtil {
                     }
                 }
             }
-            ret.add(sb.append(arg, last, arg.length()).toString());
+            target.add(sb.append(arg, last, arg.length()).toString());
         }
-        return ret;
+        return target;
     }
 }

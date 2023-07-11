@@ -9,7 +9,6 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
-import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
@@ -21,29 +20,25 @@ import org.pistonmc.build.gradle.extension.impl.ModdingToolchainSpecImpl;
 import org.pistonmc.build.gradle.repo.GeneratedRepo;
 import org.pistonmc.build.gradle.run.ClientRunConfig;
 import org.pistonmc.build.gradle.run.DataRunConfig;
-import org.pistonmc.build.gradle.run.RunConfig;
 import org.pistonmc.build.gradle.run.ServerRunConfig;
 import org.pistonmc.build.gradle.run.impl.ClientRunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.DataRunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.ServerRunConfigImpl;
+import org.pistonmc.build.gradle.task.DownloadAssetsTask;
 import org.pistonmc.build.gradle.task.ExtractNativesTask;
-import org.pistonmc.build.gradle.task.PrepareAssetsTask;
 import org.pistonmc.build.gradle.task.SetupVanillaDevTask;
 import org.pistonmc.build.gradle.util.LowercaseEnumTypeAdapterFactory;
 import org.pistonmc.build.gradle.util.OSName;
-import org.pistonmc.build.gradle.util.VariableUtil;
 import org.pistonmc.build.gradle.util.ZonedDateTimeTypeAdapter;
 import org.pistonmc.build.gradle.util.version.Argument;
 import org.pistonmc.build.gradle.util.version.Rule;
 import org.pistonmc.build.gradle.util.version.VersionJson;
 import org.pistonmc.build.gradle.util.version.VersionManifest;
 
-import java.io.File;
 import java.net.http.HttpClient;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class PistonGradlePlugin implements Plugin<Project> {
     public static final HttpClient CLIENT = HttpClient.newHttpClient();
@@ -59,7 +54,8 @@ public class PistonGradlePlugin implements Plugin<Project> {
 
     private TaskProvider<SetupVanillaDevTask> setupVanillaDevTask;
     private TaskProvider<Task> setupDevEnv;
-    private TaskProvider<PrepareAssetsTask> prepareAssetsTask;
+    private TaskProvider<DownloadAssetsTask> prepareAssetsTask;
+    private TaskProvider<ExtractNativesTask> extractNativesTask;
 
     private NamedDomainObjectProvider<Configuration> mcVanillaConfiguration;
 
@@ -96,7 +92,6 @@ public class PistonGradlePlugin implements Plugin<Project> {
             config.setVisible(false);
             config.setTransitive(false);
             config.setCanBeConsumed(false);
-//            config.setCanBeResolved(false);
         });
 
         var sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
@@ -122,15 +117,28 @@ public class PistonGradlePlugin implements Plugin<Project> {
             task.getMappingConfig().set(extension.getMapping());
             task.getOutputJar().set(extension.getVersion().flatMap(v -> generatedRepo.getPath("net.minecraft", "vanilla", v, "client")));
         });
-        this.prepareAssetsTask = tasks.register(Constants.PREPARE_ASSETS_TASK, PrepareAssetsTask.class, task -> {
+        this.prepareAssetsTask = tasks.register(Constants.PREPARE_ASSETS_TASK, DownloadAssetsTask.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
-            task.doNotTrackState("WIP");// TODO
-            task.getVersion().set(extension.getVersion());
+            task.getAssets().set(extension.getVersion().map(v -> vmc.getAssetIndex(v).objects()));
             task.getCache().set(vmc);
         });
-        var extractNativesTask = tasks.register(Constants.EXTRACT_NATIVES_TASK, ExtractNativesTask.class);// TODO
+        this.extractNativesTask = tasks.register(Constants.EXTRACT_NATIVES_TASK, ExtractNativesTask.class, task -> {
+            task.setGroup(Constants.TASK_GROUP);
+            task.getExtract().set(project.getLayout().getBuildDirectory().dir("natives"));
+        });
         this.setupDevEnv = tasks.register(Constants.SETUP_DEV_ENV_TASK, task -> {
             task.setGroup(Constants.TASK_GROUP);
+        });
+
+        extension.getRuns().configureEach(config -> {
+            project.getLogger().debug("The name of the running task for config {} is {}", config.getName(), config.getRunTaskName());
+            config.getRunTask().configure(task -> {
+                task.classpath(mcVanillaConfiguration);
+                var clientConfig = config instanceof ClientRunConfig c ? c : null;
+                if (clientConfig != null) {
+                    task.dependsOn(prepareAssetsTask, extractNativesTask);
+                }
+            });
         });
 
         project.afterEvaluate(this::postApply);
@@ -152,16 +160,19 @@ public class PistonGradlePlugin implements Plugin<Project> {
                 "version", version,
                 "classifier", "client"
         );
+        var tasks = project.getTasks();
+        var dependencies = project.getDependencies();
+        var configurations = project.getConfigurations();
         if (vanillaPresent || forgePresent || fabricPresent) {
             var startParameter = project.getGradle().getStartParameter();
             if (startParameter.getTaskNames().isEmpty()) {
                 startParameter.setTaskNames(List.of(setupDevEnv.getName()));
             }
-            var dependencies = project.getDependencies();
             var configName = mcVanillaConfiguration.getName();
             var osName = OSName.getCurrent();
-            vmc.getVersionJson(version).libraries().stream().filter(library -> library.rules() == null ||
-                    library.rules().stream().allMatch(Rule::isAllow)).forEach(library -> {
+            vmc.getVersionJson(version).libraries().stream()
+                    .filter(library -> library.rules() == null || library.rules().stream().allMatch(Rule::isAllow))
+                    .forEach(library -> {
                         dependencies.add(configName, library.name());
                         var natives = library.natives();
                         if (natives != null) {
@@ -172,23 +183,36 @@ public class PistonGradlePlugin implements Plugin<Project> {
                         }
                     });
         }
-        if (vanillaPresent) {
+        if (vanillaPresent) {// FIXME: trash code
             setupDevEnv.configure(t -> t.dependsOn(setupVanillaDevTask));
-            project.getTasks().named(JavaPlugin.CLASSES_TASK_NAME, task -> task.dependsOn(setupVanillaDevTask));
-            project.getDependencies().add(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, vanillaDependencyNotation);
-            project.getConfigurations().named(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, c -> c.extendsFrom(mcVanillaConfiguration.get()));
+            tasks.named(JavaPlugin.CLASSES_TASK_NAME, task -> task.dependsOn(setupVanillaDevTask));
+            dependencies.add(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, vanillaDependencyNotation);
+            configurations.named(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, c -> c.extendsFrom(mcVanillaConfiguration.get()));
+
             var defaultClient = project.getObjects().newInstance(ClientRunConfigImpl.class, "defaultVanillaClient");
             configureDefaultVanillaClientArgs(vmc.getVersionJson(version), defaultClient);
-            var path = extension.getVersion().flatMap(v -> generatedRepo.getPath("net.minecraft", "vanilla", v, "client")).get();
-            defaultClient.getVariables().put("classpath", mcVanillaConfiguration.get().resolve().stream().map(File::getAbsolutePath).collect(Collectors.joining(";")) + ';' + path);
-            defaultClient.getVariables().put("natives_directory", project.getLayout().getBuildDirectory().dir("natives").get().getAsFile().getAbsolutePath());// TODO
-            extension.getRuns().withType(ClientRunConfig.class, config -> config.getParents().add(defaultClient));
+            // We use JavaExec.classpath to add classpaths, but we need to set this variable because arguments in version json needs it
+            defaultClient.getVariables().put("classpath", "none");
+            defaultClient.getVariables().put("natives_directory", extractNativesTask.flatMap(ExtractNativesTask::getExtract)
+                    .map(dir -> dir.getAsFile().getAbsolutePath()));
+            extension.getRuns().withType(ClientRunConfig.class).configureEach(config -> {
+                config.getParents().add(defaultClient);
+                config.getRunTask().configure(task -> task.classpath(setupVanillaDevTask));
+            });
+
             var defaultData = project.getObjects().newInstance(DataRunConfigImpl.class, "defaultVanillaData");
             defaultData.getMainClass().set("net.minecraft.data.Main");
-            extension.getRuns().withType(DataRunConfig.class, config -> config.getParents().add(defaultData));
+            extension.getRuns().withType(DataRunConfig.class).configureEach(config -> {
+                config.getParents().add(defaultData);
+                config.getRunTask().configure(task -> task.classpath(setupVanillaDevTask));
+            });
+
             var defaultServer = project.getObjects().newInstance(ServerRunConfigImpl.class, "defaultVanillaServer");
             defaultServer.getMainClass().set("net.minecraft.server.Main");
-            extension.getRuns().withType(ServerRunConfig.class, config -> config.getParents().add(defaultServer));
+            extension.getRuns().withType(ServerRunConfig.class).configureEach(config -> {
+                config.getParents().add(defaultServer);
+                config.getRunTask().configure(task -> task.classpath(setupVanillaDevTask));
+            });
         }
         if (forgePresent) {
             project.getRepositories().maven(repo -> {
@@ -201,7 +225,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
                 });
             });
             var sourceSet = forgeSourceSet.get();
-            project.getConfigurations().named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(mcVanillaConfiguration.get()));
+            configurations.named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(mcVanillaConfiguration.get()));
         }
         if (fabricPresent) {
             project.getRepositories().maven(repo -> {
@@ -209,43 +233,12 @@ public class PistonGradlePlugin implements Plugin<Project> {
                 repo.setUrl("https://maven.fabricmc.net/");
             });
             var sourceSet = forgeSourceSet.get();
-            project.getDependencies().add(sourceSet.getImplementationConfigurationName(), vanillaDependencyNotation);
-            project.getConfigurations().named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(mcVanillaConfiguration.get()));
-        }
-        if (vanillaPresent || forgePresent || fabricPresent) {
-            extension.getRuns().configureEach(config -> {
-                var name = config.getName();
-                config.getWorkingDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
-                var taskName = "run" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
-                project.getLogger().info("The name of the running task for config {} is {}", name, taskName);
-                project.getTasks().create(taskName, JavaExec.class, task -> {
-                    task.setGroup(Constants.TASK_GROUP);
-                    task.dependsOn(prepareAssetsTask);
-                    var variables = config.getAllVariables().get();
-                    task.jvmArgs(VariableUtil.replaceVariables(config.getAllJvmArguments().get(), variables));
-                    config.getAllConditionalJvmArguments().get().forEach(conditional -> {
-                        if (conditional.rules().stream().allMatch(Rule::isAllow)) {
-                            task.jvmArgs(VariableUtil.replaceVariables(conditional.value(), variables));
-                        }
-                    });
-                    task.args(VariableUtil.replaceVariables(config.getAllGameArguments().get(), variables));
-                    config.getAllConditionalGameArguments().get().forEach(conditional -> {
-                        if (conditional.rules().stream().allMatch(rule -> rule.isAllow(config instanceof ClientRunConfig c ? c : null))) {
-                            task.args(VariableUtil.replaceVariables(conditional.value(), variables));
-                        }
-                    });
-                    task.systemProperties(config.getAllProperties().get());
-                    task.environment(config.getAllEnvironments().get());
-                    task.getMainClass().set(config.getAllMainClass());
-                    var dir = config.getWorkingDirectory().get().getAsFile();
-                    dir.mkdirs();
-                    task.setWorkingDir(dir);
-                });
-            });
+            dependencies.add(sourceSet.getImplementationConfigurationName(), vanillaDependencyNotation);
+            configurations.named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(mcVanillaConfiguration.get()));
         }
     }
 
-    private void configureDefaultVanillaClientArgs(VersionJson versionJson, RunConfig config) {
+    private void configureDefaultVanillaClientArgs(VersionJson versionJson, ClientRunConfig config) {
         var arguments = versionJson.arguments();
         if (arguments != null) {
             var game = arguments.get("game");
@@ -277,7 +270,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
                     vmc.getLoggingConfig(clientLogging.file())));
         }
         config.getMainClass().set(versionJson.mainClass());
-        config.getVariables().put("auth_player_name", "Dev");
+        config.getVariables().put("auth_player_name", config.getUsername());
         config.getVariables().put("version_name", versionJson.id());
         config.getVariables().put("game_directory", ".");
         config.getVariables().put("assets_root", vmc.assetsDir.toString());
@@ -287,8 +280,8 @@ public class PistonGradlePlugin implements Plugin<Project> {
         config.getVariables().put("clientid", "Unknown");
         config.getVariables().put("auth_xuid", "Unknown");
         config.getVariables().put("user_type", "msa");
-        config.getVariables().put("version_type", "release");
-        config.getVariables().put("launcher_name", "PistonGradle");
-        config.getVariables().put("launcher_version", "0.1-SNAPSHOT");
+        config.getVariables().put("version_type", versionJson.type().toString());
+        config.getVariables().put("launcher_name", Constants.PISTON_GRADLE);
+        config.getVariables().put("launcher_version", Constants.VERSION);
     }
 }

@@ -10,9 +10,11 @@ import org.pistonmc.build.gradle.extension.ModdingToolchainSpec;
 import org.pistonmc.build.gradle.mapping.MappingConfig;
 import org.pistonmc.build.gradle.run.ClientRunConfig;
 import org.pistonmc.build.gradle.run.DataRunConfig;
+import org.pistonmc.build.gradle.run.RunConfig;
 import org.pistonmc.build.gradle.run.ServerRunConfig;
 import org.pistonmc.build.gradle.run.impl.ClientRunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.DataRunConfigImpl;
+import org.pistonmc.build.gradle.run.impl.RunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.ServerRunConfigImpl;
 
 import javax.inject.Inject;
@@ -30,9 +32,11 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     public MinecraftExtensionImpl(VanillaMinecraftCache vmc) {
         this.vmc = vmc;
         this.toolchains = getObjects().newInstance(ModdingToolchainSpecImpl.class);
-        getRuns().registerFactory(ClientRunConfig.class, name -> getObjects().newInstance(ClientRunConfigImpl.class, name));
-        getRuns().registerFactory(DataRunConfig.class, name -> getObjects().newInstance(DataRunConfigImpl.class, name));
-        getRuns().registerFactory(ServerRunConfig.class, name -> getObjects().newInstance(ServerRunConfigImpl.class, name));
+        var runs = getRuns();
+        runs.registerBinding(RunConfig.class, RunConfigImpl.class);
+        runs.registerBinding(ClientRunConfig.class, ClientRunConfigImpl.class);
+        runs.registerBinding(DataRunConfig.class, DataRunConfigImpl.class);
+        runs.registerBinding(ServerRunConfig.class, ServerRunConfigImpl.class);
     }
 
     @Override

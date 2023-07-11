@@ -29,8 +29,12 @@ class PistonGradlePluginFunctionalTest {
         writeString(getSettingsFile(), "");
         writeString(getBuildFile(), """
                 plugins {
-                  id('org.pistonmc.build')
+                  id 'org.pistonmc.build'
                 }
+                
+                import org.pistonmc.build.gradle.run.ClientRunConfig
+                import org.pistonmc.build.gradle.run.ServerRunConfig
+                import org.pistonmc.build.gradle.run.DataRunConfig
                 
                 minecraft {
                   version = '1.20.1'
@@ -39,9 +43,10 @@ class PistonGradlePluginFunctionalTest {
                     vanilla()
                   }
                   runs {
-                    vanillaClient(org.pistonmc.build.gradle.run.ClientRunConfig) {
-                      mainClass = 'net.minecraft.client.main.Main'
-                    }
+                    random
+                    vanillaClient(ClientRunConfig)
+                    vanillaServer(ServerRunConfig)
+                    vanillaData(DataRunConfig)
                   }
                 }
                 """);

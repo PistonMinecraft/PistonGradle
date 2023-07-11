@@ -1,13 +1,19 @@
 package org.pistonmc.build.gradle.util;
 
+import org.gradle.api.tasks.Input;
+
 import java.util.Map;
 
-public class AssetIndex {
-    private Map<String, AssetEntry> objects;
+public record AssetIndex(Map<String, AssetEntry> objects) {
+    public record AssetEntry(String hash, int size) {
+        @Input
+        public String getHash() {
+            return hash;
+        }
 
-    public Map<String, AssetEntry> getObjects() {
-        return objects;
+        @Input
+        public int getSize() {
+            return size;
+        }
     }
-
-    public record AssetEntry(String hash, int size) {}
 }

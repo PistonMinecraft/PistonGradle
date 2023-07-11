@@ -1,5 +1,7 @@
 package org.pistonmc.build.gradle.run;
 
+import org.gradle.api.provider.Property;
+
 public interface ClientRunConfig extends RunConfig {
     default void asDemoUser() {
         getFeatures().add("is_demo_user");
@@ -10,4 +12,6 @@ public interface ClientRunConfig extends RunConfig {
         getVariables().put("resolution_width", String.valueOf(width));
         getVariables().put("resolution_height", String.valueOf(height));
     }
+
+    Property<String> getUsername();
 }

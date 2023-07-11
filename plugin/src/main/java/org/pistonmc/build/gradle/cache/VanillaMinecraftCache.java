@@ -185,7 +185,11 @@ public class VanillaMinecraftCache {
         }
     }
 
+    public Path getAssetObjects() {
+        return getAssetDir("objects");
+    }
+
     public Path getAssetPath(String hash) {
-        return getAssetDir("objects").resolve(hash.substring(0, 2)).resolve(hash);
+        return getAssetObjects().resolve(hash.substring(0, 2)).resolve(hash);
     }
 }
