@@ -16,7 +16,6 @@ import org.jetbrains.annotations.NotNull;
 import org.pistonmc.build.gradle.cache.VanillaMinecraftCache;
 import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.extension.impl.MinecraftExtensionImpl;
-import org.pistonmc.build.gradle.extension.impl.ModdingToolchainSpecImpl;
 import org.pistonmc.build.gradle.repo.GeneratedRepo;
 import org.pistonmc.build.gradle.run.ClientRunConfig;
 import org.pistonmc.build.gradle.run.DataRunConfig;
@@ -146,13 +145,13 @@ public class PistonGradlePlugin implements Plugin<Project> {
 
     public void postApply(@NotNull Project project) {
         var version = extension.getVersion().get();
-        var toolchains = (ModdingToolchainSpecImpl) extension.getToolchains();
+        var toolchains = extension.getToolchains();
         var vanilla = toolchains.getVanillaConfig();
         var forge = toolchains.getForgeConfig();
         var fabric = toolchains.getFabricConfig();
-        var vanillaPresent = vanilla.isPresent();
-        var forgePresent = forge.isPresent();
-        var fabricPresent = fabric.isPresent();
+        var vanillaPresent = vanilla.getEnabled().get();
+        var forgePresent = forge.getEnabled().get();
+        var fabricPresent = fabric.getEnabled().get();
         var javaPluginExtension = project.getExtensions().getByType(JavaPluginExtension.class);
         var vanillaDependencyNotation = Map.of(
                 "group", "net.minecraft",
@@ -232,7 +231,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
                 repo.setName("Fabric Maven");
                 repo.setUrl("https://maven.fabricmc.net/");
             });
-            var sourceSet = forgeSourceSet.get();
+            var sourceSet = fabricSourceSet.get();
             dependencies.add(sourceSet.getImplementationConfigurationName(), vanillaDependencyNotation);
             configurations.named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(mcVanillaConfiguration.get()));
         }

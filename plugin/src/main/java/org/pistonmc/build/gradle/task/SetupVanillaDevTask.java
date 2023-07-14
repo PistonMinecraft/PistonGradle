@@ -23,6 +23,12 @@ public abstract class SetupVanillaDevTask extends DefaultTask {
     @OutputFile
     public abstract RegularFileProperty getOutputJar();
 
+    public SetupVanillaDevTask() {
+        getInputJar().disallowUnsafeRead();
+        getMappingConfig().disallowUnsafeRead();
+        getOutputJar().disallowUnsafeRead();
+    }
+
     @TaskAction
     public void run() throws IOException {
         var config = getMappingConfig().get();

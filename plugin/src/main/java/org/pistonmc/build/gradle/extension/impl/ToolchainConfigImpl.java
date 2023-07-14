@@ -2,19 +2,27 @@ package org.pistonmc.build.gradle.extension.impl;
 
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
+import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.extension.ToolchainConfig;
 
 import javax.inject.Inject;
 
 public abstract class ToolchainConfigImpl implements ToolchainConfig {
-    private final Provider<ToolchainConfigImpl> defaultConfig;
+    protected final MinecraftExtension extension;
+    private final ToolchainConfigImpl defaultConfig;
 
     @Inject
     public abstract ObjectFactory getObjects();
 
     @Inject
-    public ToolchainConfigImpl(Provider<ToolchainConfigImpl> defaultConfig) {
+    public ToolchainConfigImpl(MinecraftExtension extension, ToolchainConfigImpl defaultConfig) {
+        this.extension = extension;
         this.defaultConfig = defaultConfig;
+        if (defaultConfig == null) {
+            getEnabled().convention(false);
+        } else {
+            getEnabled().convention(defaultConfig.getEnabled());
+        }
     }
 
     @Override
@@ -24,15 +32,20 @@ public abstract class ToolchainConfigImpl implements ToolchainConfig {
 
     public abstract static class ForgeImpl extends ToolchainConfigImpl implements ToolchainConfig.Forge {
         @Inject
-        public ForgeImpl(Provider<ToolchainConfigImpl> defaultConfig) {
-            super(defaultConfig);
+        public ForgeImpl(MinecraftExtension extension, ToolchainConfigImpl defaultConfig) {
+            super(extension, defaultConfig);
+        }
+
+        @Override
+        public Provider<String> getArtifactVersion() {
+            return extension.getVersion().zip(getVersion(), (mc, forge) -> mc + '-' + forge);
         }
     }
 
     public abstract static class FabricImpl extends ToolchainConfigImpl implements ToolchainConfig.Fabric {
         @Inject
-        public FabricImpl(Provider<ToolchainConfigImpl> defaultConfig) {
-            super(defaultConfig);
+        public FabricImpl(MinecraftExtension extension, ToolchainConfigImpl defaultConfig) {
+            super(extension, defaultConfig);
         }
     }
 }

@@ -10,12 +10,12 @@ public interface Constants {
 
     String CACHE_DIR = "caches/" + NAME;
     String GENERATED_REPO_DIR = NAME + "/generated_repo";
-    String MERGED_MAPPING_FILE = NAME + "/merged_mapping.tiny";
 
     /**
      * This configuration marks all dependencies from vanilla mc
      */
     String MINECRAFT_VANILLA_CONFIGURATION = "minecraftVanilla";
+    String FORGE_SETUP = "forgeSetup";
 
     String TASK_GROUP = "piston gradle";
     String SETUP_DEV_ENV_TASK = "setupDevEnv";

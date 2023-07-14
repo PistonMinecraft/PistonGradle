@@ -12,4 +12,12 @@ public interface ModdingToolchainSpec {
     void forge(Action<? super ToolchainConfig.Forge> configAction);
 
     void fabric(Action<? super ToolchainConfig.Fabric> configAction);
+
+    ToolchainConfig getDefaultConfig();
+
+    ToolchainConfig getVanillaConfig();
+
+    ToolchainConfig.Forge getForgeConfig();
+
+    ToolchainConfig.Fabric getFabricConfig();
 }

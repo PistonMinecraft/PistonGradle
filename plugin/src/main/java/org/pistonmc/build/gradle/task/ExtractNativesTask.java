@@ -7,4 +7,8 @@ import org.gradle.api.tasks.OutputDirectory;
 public abstract class ExtractNativesTask extends DefaultTask {// TODO
     @OutputDirectory
     public abstract DirectoryProperty getExtract();
+
+    public ExtractNativesTask() {
+        getExtract().disallowUnsafeRead();
+    }
 }
