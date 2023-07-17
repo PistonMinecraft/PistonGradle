@@ -2,6 +2,7 @@ package org.pistonmc.build.gradle.forge.config.raw;
 
 import org.pistonmc.build.gradle.forge.config.Config;
 import org.pistonmc.build.gradle.forge.config.MCPConfig;
+import org.pistonmc.build.gradle.forge.config.Side;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -13,7 +14,7 @@ public class MCPConfigRaw extends Config {
     @Nullable
     public Map<String, Object> data;
     @Nullable
-    public Map<MCPConfig.Side, List<MCPConfig.Step>> steps;
+    public Map<Side, List<MCPConfig.Step>> steps;
     @Nullable
     public Map<String, Function> functions;
     @Nullable

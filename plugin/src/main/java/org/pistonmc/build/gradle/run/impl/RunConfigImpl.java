@@ -32,7 +32,7 @@ public abstract class RunConfigImpl implements RunConfig {
     public RunConfigImpl(String name, TaskContainer tasks) {
         this.name = name;
         getParents().disallowUnsafeRead();
-        getWorkingDirectory().disallowUnsafeRead();
+        getWorkingDirectory().convention(getLayout().getProjectDirectory().dir("run")).disallowUnsafeRead();
         getMainClass().disallowUnsafeRead();
         getJvmArguments().disallowUnsafeRead();
         getConditionalJvmArguments().disallowUnsafeRead();
@@ -40,7 +40,7 @@ public abstract class RunConfigImpl implements RunConfig {
         getEnvironments().disallowUnsafeRead();
         getVariables().disallowUnsafeRead();
         getFeatures().disallowUnsafeRead();
-        getWorkingDirectory().convention(getLayout().getProjectDirectory().dir("run"));
+        getClient().convention(Boolean.FALSE).disallowUnsafeRead();
         this.runTask = tasks.register(RunConfig.super.getRunTaskName(), JavaExec.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             var clientConfig = this instanceof ClientRunConfig c ? c : null;

@@ -3,7 +3,9 @@ package org.pistonmc.build.gradle.extension.impl;
 import cn.maxpixel.mcdecompiler.mapping.type.MappingTypes;
 import org.gradle.api.Action;
 import org.gradle.api.file.ProjectLayout;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.provider.Provider;
 import org.pistonmc.build.gradle.cache.VanillaMinecraftCache;
 import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.extension.ModdingToolchainSpec;
@@ -18,6 +20,7 @@ import org.pistonmc.build.gradle.run.impl.RunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.ServerRunConfigImpl;
 
 import javax.inject.Inject;
+import java.util.List;
 
 public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     private final VanillaMinecraftCache vmc;
@@ -32,6 +35,8 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     public MinecraftExtensionImpl(VanillaMinecraftCache vmc) {
         this.vmc = vmc;
         this.toolchains = getObjects().newInstance(ModdingToolchainSpecImpl.class);
+        getVersion().finalizeValueOnRead();
+        getMapping().finalizeValueOnRead();
         var runs = getRuns();
         runs.registerBinding(RunConfig.class, RunConfigImpl.class);
         runs.registerBinding(ClientRunConfig.class, ClientRunConfigImpl.class);
@@ -60,5 +65,15 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     @Override
     public void toolchains(Action<? super ModdingToolchainSpec> action) {
         action.execute(toolchains);
+    }
+
+    @Override
+    public Provider<List<RegularFile>> getAllAccessTransformers() {
+        return null;
+    }
+
+    @Override
+    public Provider<List<RegularFile>> getAllAccessWideners() {
+        return null;
     }
 }

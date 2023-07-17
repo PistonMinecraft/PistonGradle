@@ -33,6 +33,12 @@ public interface RunConfig extends Named {
 
     SetProperty<String> getFeatures();
 
+    /**
+     * Inspired by ForgeGradle
+     * In the most cases you don't need to care about this
+     */
+    Property<Boolean> getClient();
+
     default Provider<String> getAllMainClass() {
         return getMainClass().orElse(getParents().flatMap(configs -> configs.stream().map(RunConfig::getAllMainClass)
                 .reduce(Provider::orElse).orElse(null)));

@@ -14,6 +14,7 @@ dependencies {
     implementation('cn.maxpixel:minecraft-decompiler:3.3-SNAPSHOT') {
         exclude module: 'jpot-simple'
     }
+    implementation 'net.minecraftforge:DiffPatch:2.0.7:all'
 }
 
 java {

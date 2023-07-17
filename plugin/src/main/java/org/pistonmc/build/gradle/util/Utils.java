@@ -1,8 +1,8 @@
 package org.pistonmc.build.gradle.util;
 
-import org.gradle.api.JavaVersion;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.Nullable;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
@@ -11,7 +11,7 @@ public class Utils {
         return charsetName == null ? StandardCharsets.UTF_8 : Charset.forName(charsetName);
     }
 
-    public static JavaVersion of(Integer version) {
-        return version == null ? JavaVersion.current() : JavaVersion.toVersion(version);
+    public static JavaLanguageVersion of(@Nullable Integer version, JavaLanguageVersion defaultVersion) {
+        return version == null ? defaultVersion : JavaLanguageVersion.of(version);
     }
 }

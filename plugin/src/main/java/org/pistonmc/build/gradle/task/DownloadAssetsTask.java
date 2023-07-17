@@ -4,7 +4,8 @@ import cn.maxpixel.mcdecompiler.util.FileUtil;
 import cn.maxpixel.mcdecompiler.util.Utils;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -30,24 +31,27 @@ import java.net.http.HttpResponse;
 import java.nio.file.StandardOpenOption;
 
 public abstract class DownloadAssetsTask extends DefaultTask {
+    private final FileCollection outputFiles;
+
     @Nested
     public abstract MapProperty<String, AssetIndex.AssetEntry> getAssets();
-
     @Internal
     public abstract Property<VanillaMinecraftCache> getCache();
-
-    @OutputFiles
-    public abstract ConfigurableFileCollection getOutputFiles();
 
     @Inject
     public abstract WorkerExecutor getWorkers();
 
-    public DownloadAssetsTask() {
+    @Inject
+    public DownloadAssetsTask(ProjectLayout layout) {
         getAssets().disallowUnsafeRead();
         getCache().disallowUnsafeRead();
-        getOutputFiles().disallowUnsafeRead();
-        getOutputFiles().from(getAssets().zip(getCache(), (assets, cache) -> assets.values().stream()
+        this.outputFiles = layout.files(getAssets().zip(getCache(), (assets, cache) -> assets.values().stream()
                 .map(AssetIndex.AssetEntry::hash).map(cache::getAssetPath).collect(ObjectArrayList.toList())));
+    }
+
+    @OutputFiles
+    public FileCollection getOutputFiles() {
+        return outputFiles;
     }
 
     @TaskAction

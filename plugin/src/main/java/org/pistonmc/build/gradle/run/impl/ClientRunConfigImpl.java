@@ -9,7 +9,7 @@ public abstract class ClientRunConfigImpl extends RunConfigImpl implements Clien
     @Inject
     public ClientRunConfigImpl(String name, TaskContainer tasks) {
         super(name, tasks);
-        getUsername().disallowUnsafeRead();
-        getUsername().convention("Dev");
+        getClient().set(Boolean.TRUE);
+        getUsername().convention("Dev").disallowUnsafeRead();
     }
 }

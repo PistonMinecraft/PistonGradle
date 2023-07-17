@@ -29,7 +29,7 @@ public class VanillaMinecraftCache {
     private final Path cacheDir;
     public final Path assetsDir;
     public final Path versionsDir;
-    private final Path versionManifestFile;
+    public final Path versionManifestFile;
     private final Object2ObjectOpenHashMap<String, VersionJson> versionJsonCache = new Object2ObjectOpenHashMap<>();
     private final Provider<Boolean> forceUpdateVersionManifest;
 
@@ -70,6 +70,10 @@ public class VanillaMinecraftCache {
         return versionsDir.resolve(id);
     }
 
+    public Path getVersionJsonFile(String id) {
+        return getVersionDir(id).resolve(id + ".json");
+    }
+
     public Path getAssetDir(String id) {
         return assetsDir.resolve(id);
     }
@@ -79,7 +83,7 @@ public class VanillaMinecraftCache {
     }
 
     private VersionJson loadVersionJson(String id) {
-        Path path = getVersionDir(id).resolve(id + ".json");
+        Path path = getVersionJsonFile(id);
         var version = getVersionManifest().versions().get(id);
         if (version == null) throw new IllegalArgumentException("u dumb. there's no such mc version");
         try {

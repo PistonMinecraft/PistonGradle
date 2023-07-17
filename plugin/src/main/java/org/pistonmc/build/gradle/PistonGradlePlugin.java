@@ -16,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import org.pistonmc.build.gradle.cache.VanillaMinecraftCache;
 import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.extension.impl.MinecraftExtensionImpl;
+import org.pistonmc.build.gradle.forge.ForgeSetup;
 import org.pistonmc.build.gradle.repo.GeneratedRepo;
 import org.pistonmc.build.gradle.run.ClientRunConfig;
 import org.pistonmc.build.gradle.run.DataRunConfig;
@@ -61,6 +62,8 @@ public class PistonGradlePlugin implements Plugin<Project> {
     private SourceSet mainSourceSet;
     private NamedDomainObjectProvider<SourceSet> forgeSourceSet;
     private NamedDomainObjectProvider<SourceSet> fabricSourceSet;
+
+    private ForgeSetup forgeSetup;
 
     public void apply(@NotNull Project project) {
         this.vmc = new VanillaMinecraftCache(project);
@@ -133,12 +136,11 @@ public class PistonGradlePlugin implements Plugin<Project> {
             project.getLogger().debug("The name of the running task for config {} is {}", config.getName(), config.getRunTaskName());
             config.getRunTask().configure(task -> {
                 task.classpath(mcVanillaConfiguration);
-                var clientConfig = config instanceof ClientRunConfig c ? c : null;
-                if (clientConfig != null) {
-                    task.dependsOn(prepareAssetsTask, extractNativesTask);
-                }
+                task.dependsOn(config.getClient().map(isClient -> isClient ? List.of(prepareAssetsTask, extractNativesTask) : List.of()));
             });
         });
+
+        this.forgeSetup = new ForgeSetup(project, extension, vmc, mcVanillaConfiguration);
 
         project.afterEvaluate(this::postApply);
     }
@@ -172,7 +174,6 @@ public class PistonGradlePlugin implements Plugin<Project> {
             vmc.getVersionJson(version).libraries().stream()
                     .filter(library -> library.rules() == null || library.rules().stream().allMatch(Rule::isAllow))
                     .forEach(library -> {
-                        dependencies.add(configName, library.name());
                         var natives = library.natives();
                         if (natives != null) {
                             var classifier = natives.get(osName);
@@ -225,6 +226,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
             });
             var sourceSet = forgeSourceSet.get();
             configurations.named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(mcVanillaConfiguration.get()));
+            forgeSetup.postSetup(project, extension);
         }
         if (fabricPresent) {
             project.getRepositories().maven(repo -> {
