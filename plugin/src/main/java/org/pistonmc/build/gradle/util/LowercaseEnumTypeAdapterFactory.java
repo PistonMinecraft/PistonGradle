@@ -12,20 +12,21 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class LowercaseEnumTypeAdapterFactory implements TypeAdapterFactory {
     @Override
     public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-        Class<T> c = (Class<T>) type.getRawType();
+        Class<? extends T> c = (Class<? extends T>) type.getRawType();
         if (!c.isEnum()) return null;
-        Map<String, T> enumConstants = Arrays.stream(c.getEnumConstants()).collect(Collectors.toMap(String::valueOf, Function.identity()));
+        Class<Enum<?>> enumClass = (Class<Enum<?>>) c;
+        Map<String, T> enumConstants = Arrays.stream(enumClass.getEnumConstants())
+                .collect(Collectors.toMap(Enum::name, c::cast));
         return new TypeAdapter<>() {
             @Override
             public void write(JsonWriter out, T value) throws IOException {
                 if (value == null) out.nullValue();
-                else out.value(value.toString().toLowerCase(Locale.US));
+                else out.value(value.toString().toLowerCase(Locale.ENGLISH));
             }
 
             @Override
@@ -33,7 +34,7 @@ public class LowercaseEnumTypeAdapterFactory implements TypeAdapterFactory {
                 if (in.peek() == JsonToken.NULL) {
                     in.nextNull();
                     return null;
-                } else return enumConstants.get(in.nextString().toUpperCase(Locale.US));
+                } else return enumConstants.get(in.nextString().toUpperCase(Locale.ENGLISH));
             }
         };
     }

@@ -23,6 +23,8 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.*;
 import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.pistonmc.build.gradle.cache.VanillaMinecraftCache;
 import org.pistonmc.build.gradle.forge.config.MCPConfig;
 import org.pistonmc.build.gradle.forge.config.Side;
@@ -53,6 +55,7 @@ import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
 import static org.pistonmc.build.gradle.util.FileUtil.extractZipTo;
+import static org.pistonmc.build.gradle.util.Utils.artifactEquals;
 
 /**
  * We don't have the functionality to stop at a specific step as there seems no need right now
@@ -127,10 +130,11 @@ public abstract class SetupMCP extends DefaultTask {
         var userDevConfig = getConfig().get();
         var side = getSide().get();
         var config = userDevConfig.mcp;
-        var data = config.data.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> {
+        var data = config.data.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> {// data guarantees that every value is absolute and normalized
             var value = e.getValue();
-            if (value instanceof String s) return s;
-            else if (value instanceof Map<?,?> m) return (String) m.get(side);
+            if (value instanceof String s) return config.extractPath.resolve(s).toAbsolutePath().normalize().toString();
+            else if (value instanceof Map<?,?> m) return config.extractPath.resolve(((Map<String, String>) m)
+                    .get(side.toString())).toAbsolutePath().normalize().toString();
             else throw new UnsupportedOperationException();
         }));
         var toolchains = getProject().getExtensions().getByType(JavaToolchainService.class);
@@ -141,6 +145,7 @@ public abstract class SetupMCP extends DefaultTask {
         var outputs = new Object2ObjectOpenHashMap<String, String>();
         for (var step : config.steps.get(side)) {
             var type = step.type();
+            getLogger().lifecycle("Executing step {} of type {}", step.name(), step.type());
             var inputs = new Object2ObjectOpenHashMap<>(data);
             for (var entry : step.args().entrySet()) {
                 inputs.put(entry.getKey(), VariableUtil.replaceVariable(entry.getValue(), outputs, false));
@@ -151,12 +156,12 @@ public abstract class SetupMCP extends DefaultTask {
                 outputs.put(step.name() + "Output", Objects.requireNonNull(builtins.execute(type, inputs,
                         workingDir.getAsFile().toPath().toAbsolutePath().normalize())).toString());
             } else if (config.functions.containsKey(type)) {
-                String ext = inputs.getOrDefault("outputExtension", "jar");
+                String ext = inputs.getOrDefault("outputExtension", ".jar");
                 inputs.computeIfAbsent("output", k -> workingDir.file(k + ext).getAsFile().getAbsolutePath());
                 inputs.computeIfAbsent("log", k -> workingDir.file("log.log").getAsFile().getAbsolutePath());
                 if (type.equals("decompile")) {
-                    runAccessTransformer(userDevConfig, config, inputs, outputDir.dir("AccessTransformer").getAsFile().toPath().toAbsolutePath().normalize(), toolchains);
-                    runSideAnnotationStripper(userDevConfig, config, inputs, outputDir.dir("SideStripper").getAsFile().toPath().toAbsolutePath().normalize(), toolchains);
+                    runAccessTransformer(userDevConfig, config, inputs, getProject().mkdir(outputDir.dir("AccessTransformer")).toPath().toAbsolutePath().normalize(), toolchains);
+                    runSideAnnotationStripper(userDevConfig, config, inputs, getProject().mkdir(outputDir.dir("SideStripper")).toPath().toAbsolutePath().normalize(), toolchains);
                 }
                 var func = config.functions.get(type);
                 var executable = toolchains.launcherFor(spec -> spec.getLanguageVersion().set(func.javaVersion())).get().getExecutablePath();
@@ -164,15 +169,27 @@ public abstract class SetupMCP extends DefaultTask {
                 logFile.createNewFile();
                 try (var os = new FileOutputStream(logFile)) {
                     getProject().javaexec(spec -> {
-                        spec.setClasspath(forgeSetup.fileCollection(func.jar()))
+                        PrintStream ps = new PrintStream(os) {
+                            @Override
+                            public void println(@Nullable String x) {
+                                System.out.println(x);
+                                super.println(x);
+                            }
+
+                            @Override
+                            public void write(@NotNull byte[] buf, int off, int len) {
+                                System.out.write(buf, off, len);
+                                super.write(buf, off, len);
+                            }
+                        };
+                        spec.setClasspath(forgeSetup.fileCollection(dep -> artifactEquals(dep, func.jar())))
                                 .setArgs(VariableUtil.replaceVariables(func.args(), inputs, false))
-                                .setStandardOutput(os)
-                                .setErrorOutput(os)
+                                .setStandardOutput(ps)
+                                .setErrorOutput(ps)
                                 .workingDir(workingDir)
                                 .executable(executable);
                         spec.jvmArgs(VariableUtil.replaceVariables(func.jvmArgs(), inputs, false))
                                 .setDefaultCharacterEncoding(config.encoding.name());
-                        PrintStream ps = new PrintStream(os);
                         Function<String, String> quote = s -> '"' + s + '"';
                         ps.println("JVM:         " + executable);
                         ps.println("Jar:         " + spec.getClasspath().getSingleFile().getAbsolutePath());
@@ -180,6 +197,7 @@ public abstract class SetupMCP extends DefaultTask {
                         ps.println("Run Args:    " + spec.getArgs().stream().map(quote).collect(Collectors.joining(", ")));
                         ps.println("Working Dir: " + workingDir.getAsFile().getAbsolutePath());
                     }).rethrowFailure().assertNormalExitValue();
+                    outputs.put(step.name() + "Output", inputs.get("output"));
                 }
             }
         }
@@ -190,10 +208,11 @@ public abstract class SetupMCP extends DefaultTask {
         var userAts = getAccessTransformers().get();
         var forgeAts = userDevConfig.ats;
         if (userAts.isEmpty() && forgeAts.isEmpty()) return;
+        getLogger().lifecycle(" - Executing AccessTransformer");
         var executable = toolchains.launcherFor(spec -> spec.getLanguageVersion().set(config.javaTarget)).get().getExecutablePath();
         var logFile = workingDir.resolve("console.log");
         String output = workingDir.resolve("output.jar").toString();
-        try (var os = Files.newOutputStream(logFile)) {
+        try (var os = Files.newOutputStream(logFile, StandardOpenOption.CREATE)) {
             getProject().javaexec(spec -> {
                 spec.classpath(getAccessTransformerJar())
                         .setArgs(List.of("--inJar", inputs.get("input"), "--outJar", output))
@@ -215,13 +234,14 @@ public abstract class SetupMCP extends DefaultTask {
     private void runSideAnnotationStripper(UserDevConfig userDevConfig, MCPConfig config, Map<String, String> inputs, Path workingDir, JavaToolchainService toolchains) throws IOException {
         var forgeSass = userDevConfig.sass;
         if (forgeSass.isEmpty()) return;
+        getLogger().lifecycle(" - Executing SideAnnotationStripper");
         var executable = toolchains.launcherFor(spec -> spec.getLanguageVersion().set(config.javaTarget)).get().getExecutablePath();
         var logFile = workingDir.resolve("console.log");
         String output = workingDir.resolve("output.jar").toString();
-        try (var os = Files.newOutputStream(logFile)) {
+        try (var os = Files.newOutputStream(logFile, StandardOpenOption.CREATE)) {
             getProject().javaexec(spec -> {
                 spec.classpath(getSideAnnotationStripperJar())
-                        .setArgs(List.of("--strip", "--inJar", inputs.get("input"), "--outJar", output))
+                        .setArgs(List.of("--strip", "--input", inputs.get("input"), "--output", output))
                         .setStandardOutput(os)
                         .setErrorOutput(os)
                         .workingDir(workingDir)
@@ -278,7 +298,7 @@ public abstract class SetupMCP extends DefaultTask {
 
         @Func
         private Path downloadServer() {
-            return cache.getClientJar(config.version);
+            return cache.getServerJar(config.version);
         }
 
         @Func
@@ -289,7 +309,7 @@ public abstract class SetupMCP extends DefaultTask {
         @Func
         private Path strip(Map<String, String> inputs, Path workingDir) throws IOException {
             Set<String> filter;
-            try (var lines = Files.lines(config.extractPath.resolve(inputs.get("mappings")))) {
+            try (var lines = Files.lines(Path.of(inputs.get("mappings")))) {
                 filter = lines.filter(l -> !l.startsWith("\t"))
                         .map(s -> s.substring(0, s.indexOf(' ')).concat(".class"))
                         .collect(Collectors.toSet());
@@ -354,7 +374,7 @@ public abstract class SetupMCP extends DefaultTask {
 
         @Func
         private Path inject(Map<String, String> inputs, Path workingDir) throws IOException {
-            var inject = config.extractPath.resolve(inputs.get("inject"));
+            var inject = Path.of(inputs.get("inject"));
             String template = null;
             Map<String, byte[]> injectFiles;
             try (var files = FileUtil.iterateFiles(inject)) {
@@ -410,8 +430,7 @@ public abstract class SetupMCP extends DefaultTask {
             CliOperation.Result<PatchOperation.PatchesSummary> result = PatchOperation.builder()
                     .logTo(new LoggingOutputStream(logger, LogLevel.LIFECYCLE))
                     .basePath(Path.of(inputs.get("input")))
-                    .patchesPath(config.extractPath)
-                    .patchesPrefix(inputs.get("patches"))
+                    .patchesPath(Path.of(inputs.get("patches")))
                     .outputPath(output)
                     .verbose(false)
                     .mode(PatchMode.OFFSET)

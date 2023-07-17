@@ -128,9 +128,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
             task.setGroup(Constants.TASK_GROUP);
             task.getExtract().set(project.getLayout().getBuildDirectory().dir("natives"));
         });
-        this.setupDevEnv = tasks.register(Constants.SETUP_DEV_ENV_TASK, task -> {
-            task.setGroup(Constants.TASK_GROUP);
-        });
+        this.setupDevEnv = tasks.register(Constants.SETUP_DEV_ENV_TASK, task -> task.setGroup(Constants.TASK_GROUP));
 
         extension.getRuns().configureEach(config -> {
             project.getLogger().debug("The name of the running task for config {} is {}", config.getName(), config.getRunTaskName());
@@ -174,6 +172,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
             vmc.getVersionJson(version).libraries().stream()
                     .filter(library -> library.rules() == null || library.rules().stream().allMatch(Rule::isAllow))
                     .forEach(library -> {
+                        dependencies.add(configName, library.name());
                         var natives = library.natives();
                         if (natives != null) {
                             var classifier = natives.get(osName);
@@ -226,7 +225,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
             });
             var sourceSet = forgeSourceSet.get();
             configurations.named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(mcVanillaConfiguration.get()));
-            forgeSetup.postSetup(project, extension);
+            forgeSetup.postSetup(project, extension, setupDevEnv);
         }
         if (fabricPresent) {
             project.getRepositories().maven(repo -> {

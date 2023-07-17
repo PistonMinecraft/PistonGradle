@@ -27,16 +27,18 @@ public class VariableUtil {
 
     public static String replaceVariable(String arg, Map<String, String> variables, boolean dollarBegin) {
         StringBuilder sb = new StringBuilder(arg.length());
+        final int l = dollarBegin ? 2 : 1;
         int last = 0;
-        for (int i = arg.indexOf(dollarBegin ? "${" : "{"); i >= 0; i = arg.indexOf(dollarBegin ? "${" : "{", last)) {
-            int j = arg.indexOf('}', i + 2);
-            if (j > i + 2) {
-                String value = variables.get(arg.substring(i + 2, j));
+        for (int i = arg.indexOf(dollarBegin ? "${" : "{"); i >= 0; i = arg.indexOf(dollarBegin ? "${" : "{", i)) {
+            int j = arg.indexOf('}', i + l);
+            if (j > i + l) {
+                String value = variables.get(arg.substring(i + l, j));
                 if (value != null) {
                     sb.append(arg, last, i).append(value);
                     last = j + 1;
                 }
-            }
+                i = j + 1;
+            } else i += l;
         }
         return sb.append(arg, last, arg.length()).toString();
     }

@@ -2,6 +2,7 @@ package org.pistonmc.build.gradle.forge;
 
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.Directory;
@@ -12,13 +13,14 @@ import org.pistonmc.build.gradle.cache.VanillaMinecraftCache;
 import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.forge.config.UserDevConfig;
 import org.pistonmc.build.gradle.forge.task.SetupMCP;
+import org.pistonmc.build.gradle.util.Utils;
 
 import java.nio.file.Path;
 import java.util.Map;
 
 public class ForgeSetup {
     private static final Map.Entry<String, String> GROUP_ENTRY = Map.entry("group", "net.minecraftforge");
-    private static final Map.Entry<String, String> ARTIFACT_ENTRY = Map.entry("group", "forge");
+    private static final Map.Entry<String, String> ARTIFACT_ENTRY = Map.entry("name", "forge");
     private static final Map.Entry<String, String> USERDEV_CLASSIFIER_ENTRY = Map.entry("classifier", "userdev");
 
     private final Provider<Path> extractBaseDir;
@@ -27,7 +29,7 @@ public class ForgeSetup {
     private final TaskProvider<SetupMCP> setupMcp;
 
     private final NamedDomainObjectProvider<Configuration> forgeSetup;
-    private final Dependency userDevJar;
+    private final Provider<Dependency> userDevJar;
     private final Dependency atJar;
     private final Dependency sasJar;
 
@@ -41,14 +43,15 @@ public class ForgeSetup {
             config.setDescription("Used when setting up Forge workspace");
             config.setVisible(false);
             config.setCanBeConsumed(false);
+            config.setTransitive(false);
         });
 
         var dependencies = project.getDependencies();
-        this.userDevJar = dependencies.create(forgeConfig.getArtifactVersion().map(ForgeSetup::userDevDependency));
+        this.userDevJar = forgeConfig.getArtifactVersion().map(ForgeSetup::userDevDependency).map(dependencies::create);
         this.atJar = dependencies.create(ForgeConstants.AT_DEP);
         this.sasJar = dependencies.create(ForgeConstants.SAS_DEP);
         forgeSetup.configure(c -> {
-            c.getDependencies().add(userDevJar);
+            c.getDependencies().addLater(userDevJar);
             c.getDependencies().add(atJar);
             c.getDependencies().add(sasJar);
         });
@@ -65,15 +68,17 @@ public class ForgeSetup {
         });
     }
 
-    public void postSetup(Project project, MinecraftExtension extension) {
+    public void postSetup(Project project, MinecraftExtension extension, TaskProvider<Task> setupDevEnv) {
         var dependencies = project.getDependencies();
         var forgeSetup = this.forgeSetup.get();
-        var userDevConfig = UserDevConfig.load(forgeSetup.copy().fileCollection(dep -> userDevJar == dep),
+        var userDevJar = this.userDevJar.get();
+        var userDevConfig = UserDevConfig.load(forgeSetup.copy().fileCollection(dep -> Utils.hashEquals(dep, userDevJar)),
                 extractBaseDir.get(), forgeSetup, dependencies);
         setupMcp.configure(task -> {
             task.getConfig().set(userDevConfig);
             task.getAccessTransformers().set(extension.getAllAccessTransformers());
         });
+        setupDevEnv.configure(t -> t.dependsOn(setupMcp));
     }
 
     private static Map<String, String> userDevDependency(String artifactVersion) {

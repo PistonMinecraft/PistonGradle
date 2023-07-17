@@ -18,7 +18,7 @@ public class MCPConfigRaw extends Config {
     @Nullable
     public Map<String, Function> functions;
     @Nullable
-    public Map<String, List<String>> libraries;
+    public Map<Side, List<String>> libraries;
 
     // V2
     public boolean official = false;

@@ -6,6 +6,7 @@ import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.extension.ToolchainConfig;
 
 import javax.inject.Inject;
+import java.util.Optional;
 
 public abstract class ToolchainConfigImpl implements ToolchainConfig {
     protected final MinecraftExtension extension;
@@ -15,6 +16,10 @@ public abstract class ToolchainConfigImpl implements ToolchainConfig {
     public abstract ObjectFactory getObjects();
 
     @Inject
+    public ToolchainConfigImpl(MinecraftExtension extension, Optional<ToolchainConfigImpl> defaultConfig) {
+        this(extension, defaultConfig.orElse(null));
+    }
+
     public ToolchainConfigImpl(MinecraftExtension extension, ToolchainConfigImpl defaultConfig) {
         this.extension = extension;
         this.defaultConfig = defaultConfig;

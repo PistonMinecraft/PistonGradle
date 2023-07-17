@@ -2,10 +2,12 @@ package org.pistonmc.build.gradle.extension.impl;
 
 import org.gradle.api.Action;
 import org.gradle.api.model.ObjectFactory;
+import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.extension.ModdingToolchainSpec;
 import org.pistonmc.build.gradle.extension.ToolchainConfig;
 
 import javax.inject.Inject;
+import java.util.Optional;
 
 public abstract class ModdingToolchainSpecImpl implements ModdingToolchainSpec {
     private final ToolchainConfig defaultConfig;
@@ -14,11 +16,11 @@ public abstract class ModdingToolchainSpecImpl implements ModdingToolchainSpec {
     private final ToolchainConfig.Fabric fabricConfig;
 
     @Inject
-    public ModdingToolchainSpecImpl(ObjectFactory objects) {
-        this.defaultConfig = objects.newInstance(ToolchainConfigImpl.class, (Object) null);
-        this.vanillaConfig = objects.newInstance(ToolchainConfigImpl.class, defaultConfig);
-        this.forgeConfig = objects.newInstance(ToolchainConfigImpl.Forge.class, defaultConfig);
-        this.fabricConfig = objects.newInstance(ToolchainConfigImpl.Fabric.class, defaultConfig);
+    public ModdingToolchainSpecImpl(ObjectFactory objects, MinecraftExtension extension) {
+        this.defaultConfig = objects.newInstance(ToolchainConfigImpl.class, extension, Optional.empty());
+        this.vanillaConfig = objects.newInstance(ToolchainConfigImpl.class, extension, Optional.of(defaultConfig));
+        this.forgeConfig = objects.newInstance(ToolchainConfigImpl.ForgeImpl.class, extension, defaultConfig);
+        this.fabricConfig = objects.newInstance(ToolchainConfigImpl.FabricImpl.class, extension, defaultConfig);
     }
 
     @Override

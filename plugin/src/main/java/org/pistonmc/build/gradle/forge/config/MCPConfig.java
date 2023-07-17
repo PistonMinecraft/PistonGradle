@@ -69,7 +69,7 @@ public class MCPConfig {
                     .map(e -> Map.entry(e.getKey(), ExternalJarExec.from(e.getValue(), dependencies, deps, java)))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             return new MCPConfig(raw.version, nonNull(raw.data), raw.steps, functions, nonNull(raw.libraries).entrySet().stream()
-                    .map(e -> Map.entry(Side.of(e.getKey()), nonNull(e.getValue()).stream().map(dependencies::create).toList()))
+                    .map(e -> Map.entry(e.getKey(), nonNull(e.getValue()).stream().map(dependencies::create).toList()))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)), raw.official, java, forName(raw.encoding), extract);
         } catch (IOException e) {
             throw Utils.wrapInRuntime(e);

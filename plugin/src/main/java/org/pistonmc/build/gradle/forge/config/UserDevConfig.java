@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static org.pistonmc.build.gradle.util.CollectionUtil.nonNull;
 import static org.pistonmc.build.gradle.util.Utils.forName;
+import static org.pistonmc.build.gradle.util.Utils.hashEquals;
 
 public class UserDevConfig extends Config {
     public final MCPConfig mcp;
@@ -68,7 +69,7 @@ public class UserDevConfig extends Config {
             var raw = PistonGradlePlugin.GSON.fromJson(isr, UserDevConfigRaw.class);
             var mcpDep = dependencies.create(raw.mcp);
             deps.add(mcpDep);
-            var mcp = MCPConfig.load(forgeSetup.copy().fileCollection(mcpDep), extractBaseDir, forgeSetup, dependencies);
+            var mcp = MCPConfig.load(forgeSetup.copy().fileCollection(dep -> hashEquals(dep, mcpDep)), extractBaseDir, forgeSetup, dependencies);
             List<Path> ats = nonNull(raw.ats).stream().map(extract::resolve).toList();
             List<Path> sass = nonNull(raw.sass).stream().map(extract::resolve).toList();
             var sources = dependencies.create(raw.sources);

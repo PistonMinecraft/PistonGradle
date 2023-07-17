@@ -34,7 +34,7 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     @Inject
     public MinecraftExtensionImpl(VanillaMinecraftCache vmc) {
         this.vmc = vmc;
-        this.toolchains = getObjects().newInstance(ModdingToolchainSpecImpl.class);
+        this.toolchains = getObjects().newInstance(ModdingToolchainSpecImpl.class, this);
         getVersion().finalizeValueOnRead();
         getMapping().finalizeValueOnRead();
         var runs = getRuns();
@@ -68,12 +68,12 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     }
 
     @Override
-    public Provider<List<RegularFile>> getAllAccessTransformers() {
-        return null;
+    public Provider<List<RegularFile>> getAllAccessTransformers() {// TODO
+        return getAccessTransformers();
     }
 
     @Override
-    public Provider<List<RegularFile>> getAllAccessWideners() {
-        return null;
+    public Provider<List<RegularFile>> getAllAccessWideners() {// TODO
+        return getAccessWideners();
     }
 }

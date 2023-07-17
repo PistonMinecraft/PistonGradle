@@ -40,7 +40,10 @@ class PistonGradlePluginFunctionalTest {
                   version = '1.20.1'
                   mapping = official()
                   toolchains {
-                    vanilla()
+                    //vanilla()
+                    forge {
+                      version = '47.1.28'
+                    }
                   }
                   runs {
                     random
@@ -55,7 +58,7 @@ class PistonGradlePluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments(Constants.SETUP_DEV_ENV_TASK, "runVanillaClient", "--stacktrace", "--info");
+        runner.withArguments(/*"dependencies", */Constants.SETUP_DEV_ENV_TASK, "--stacktrace", "--info");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
 
