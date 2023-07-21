@@ -8,7 +8,6 @@ import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
@@ -21,12 +20,13 @@ import org.pistonmc.build.gradle.repo.GeneratedRepo;
 import org.pistonmc.build.gradle.run.ClientRunConfig;
 import org.pistonmc.build.gradle.run.DataRunConfig;
 import org.pistonmc.build.gradle.run.ServerRunConfig;
+import org.pistonmc.build.gradle.run.forge.ForgeRunConfig;
 import org.pistonmc.build.gradle.run.impl.ClientRunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.DataRunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.ServerRunConfigImpl;
-import org.pistonmc.build.gradle.task.DownloadAssetsTask;
-import org.pistonmc.build.gradle.task.ExtractNativesTask;
-import org.pistonmc.build.gradle.task.SetupVanillaDevTask;
+import org.pistonmc.build.gradle.task.DownloadAssets;
+import org.pistonmc.build.gradle.task.ExtractNatives;
+import org.pistonmc.build.gradle.task.SetupVanillaDev;
 import org.pistonmc.build.gradle.util.LowercaseEnumTypeAdapterFactory;
 import org.pistonmc.build.gradle.util.OSName;
 import org.pistonmc.build.gradle.util.ZonedDateTimeTypeAdapter;
@@ -52,15 +52,14 @@ public class PistonGradlePlugin implements Plugin<Project> {
     private GeneratedRepo generatedRepo;
     private MinecraftExtension extension;
 
-    private TaskProvider<SetupVanillaDevTask> setupVanillaDevTask;
+    private TaskProvider<SetupVanillaDev> setupVanillaDevTask;
     private TaskProvider<Task> setupDevEnv;
-    private TaskProvider<DownloadAssetsTask> prepareAssetsTask;
-    private TaskProvider<ExtractNativesTask> extractNativesTask;
+    private TaskProvider<DownloadAssets> prepareAssetsTask;
+    private TaskProvider<ExtractNatives> extractNativesTask;
 
-    private NamedDomainObjectProvider<Configuration> mcVanillaConfiguration;
+    private NamedDomainObjectProvider<Configuration> vanillaMcConfiguration;
 
     private SourceSet mainSourceSet;
-    private NamedDomainObjectProvider<SourceSet> forgeSourceSet;
     private NamedDomainObjectProvider<SourceSet> fabricSourceSet;
 
     private ForgeSetup forgeSetup;
@@ -89,7 +88,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
         generatedRepo.addToProject(project);
 
         var configurations = project.getConfigurations();
-        this.mcVanillaConfiguration = configurations.register(Constants.MINECRAFT_VANILLA_CONFIGURATION, config -> {
+        this.vanillaMcConfiguration = configurations.register(Constants.VANILLA_MC_CONFIGURATION, config -> {
             config.setDescription("Marks all dependencies from vanilla MC");
             config.setVisible(false);
             config.setTransitive(false);
@@ -99,12 +98,6 @@ public class PistonGradlePlugin implements Plugin<Project> {
         var sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         this.mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
         var mainOutput = mainSourceSet.getOutput();
-        this.forgeSourceSet = sourceSets.register(Constants.FORGE_SOURCE_SET, sourceSet -> {
-            sourceSet.getJava().srcDirs("src/forge/java");
-            sourceSet.getResources().srcDirs("src/forge/resources");
-            sourceSet.setCompileClasspath(sourceSet.getCompileClasspath().plus(mainOutput));
-            sourceSet.setRuntimeClasspath(sourceSet.getRuntimeClasspath().plus(mainOutput));
-        });
         this.fabricSourceSet = sourceSets.register(Constants.FABRIC_SOURCE_SET, sourceSet -> {
             sourceSet.getJava().srcDirs("src/fabric/java");
             sourceSet.getResources().srcDirs("src/fabric/resources");
@@ -113,18 +106,18 @@ public class PistonGradlePlugin implements Plugin<Project> {
         });
 
         var tasks = project.getTasks();
-        this.setupVanillaDevTask = tasks.register(Constants.SETUP_VANILLA_DEV_ENV_TASK, SetupVanillaDevTask.class, task -> {
+        this.setupVanillaDevTask = tasks.register(Constants.SETUP_VANILLA_DEV_ENV_TASK, SetupVanillaDev.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.getInputJar().set(project.getLayout().file(extension.getVersion().map(vmc::getClientJarFile)));
-            task.getMappingConfig().set(extension.getMapping());
+            task.getMappingConfig().set(extension.getMappings());
             task.getOutputJar().set(extension.getVersion().flatMap(v -> generatedRepo.getPath("net.minecraft", "vanilla", v, "client")));
         });
-        this.prepareAssetsTask = tasks.register(Constants.PREPARE_ASSETS_TASK, DownloadAssetsTask.class, task -> {
+        this.prepareAssetsTask = tasks.register(Constants.PREPARE_ASSETS_TASK, DownloadAssets.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.getAssets().set(extension.getVersion().map(v -> vmc.getAssetIndex(v).objects()));
             task.getCache().set(vmc);
         });
-        this.extractNativesTask = tasks.register(Constants.EXTRACT_NATIVES_TASK, ExtractNativesTask.class, task -> {
+        this.extractNativesTask = tasks.register(Constants.EXTRACT_NATIVES_TASK, ExtractNatives.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.getExtract().set(project.getLayout().getBuildDirectory().dir("natives"));
         });
@@ -132,13 +125,10 @@ public class PistonGradlePlugin implements Plugin<Project> {
 
         extension.getRuns().configureEach(config -> {
             project.getLogger().debug("The name of the running task for config {} is {}", config.getName(), config.getRunTaskName());
-            config.getRunTask().configure(task -> {
-                task.classpath(mcVanillaConfiguration);
-                task.dependsOn(config.getClient().map(isClient -> isClient ? List.of(prepareAssetsTask, extractNativesTask) : List.of()));
-            });
+            config.getRunTask().configure(task -> task.dependsOn(config.getClient().map(isClient -> isClient ? List.of(prepareAssetsTask, extractNativesTask) : List.of())));
         });
 
-        this.forgeSetup = new ForgeSetup(project, extension, vmc, mcVanillaConfiguration);
+        this.forgeSetup = new ForgeSetup(project, extension, vmc, generatedRepo);
 
         project.afterEvaluate(this::postApply);
     }
@@ -147,12 +137,10 @@ public class PistonGradlePlugin implements Plugin<Project> {
         var version = extension.getVersion().get();
         var toolchains = extension.getToolchains();
         var vanilla = toolchains.getVanillaConfig();
-        var forge = toolchains.getForgeConfig();
         var fabric = toolchains.getFabricConfig();
         var vanillaPresent = vanilla.getEnabled().get();
-        var forgePresent = forge.getEnabled().get();
+        var forgePresent = toolchains.getForgeConfig().getEnabled().get();
         var fabricPresent = fabric.getEnabled().get();
-        var javaPluginExtension = project.getExtensions().getByType(JavaPluginExtension.class);
         var vanillaDependencyNotation = Map.of(
                 "group", "net.minecraft",
                 "name", "vanilla",
@@ -167,7 +155,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
             if (startParameter.getTaskNames().isEmpty()) {
                 startParameter.setTaskNames(List.of(setupDevEnv.getName()));
             }
-            var configName = mcVanillaConfiguration.getName();
+            var configName = vanillaMcConfiguration.getName();
             var osName = OSName.getCurrent();
             vmc.getVersionJson(version).libraries().stream()
                     .filter(library -> library.rules() == null || library.rules().stream().allMatch(Rule::isAllow))
@@ -184,49 +172,41 @@ public class PistonGradlePlugin implements Plugin<Project> {
         }
         if (vanillaPresent) {// FIXME: trash code
             setupDevEnv.configure(t -> t.dependsOn(setupVanillaDevTask));
-            tasks.named(JavaPlugin.CLASSES_TASK_NAME, task -> task.dependsOn(setupVanillaDevTask));
-            dependencies.add(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, vanillaDependencyNotation);
-            configurations.named(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, c -> c.extendsFrom(mcVanillaConfiguration.get()));
+            tasks.named(JavaPlugin.COMPILE_JAVA_TASK_NAME, task -> task.dependsOn(setupVanillaDevTask));
+            configurations.named(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, c -> {
+                c.extendsFrom(vanillaMcConfiguration.get());
+                c.getDependencies().add(dependencies.create(vanillaDependencyNotation));
+            });
 
             var defaultClient = project.getObjects().newInstance(ClientRunConfigImpl.class, "defaultVanillaClient");
             configureDefaultVanillaClientArgs(vmc.getVersionJson(version), defaultClient);
             // We use JavaExec.classpath to add classpaths, but we need to set this variable because arguments in version json needs it
             defaultClient.getVariables().put("classpath", "none");
-            defaultClient.getVariables().put("natives_directory", extractNativesTask.flatMap(ExtractNativesTask::getExtract)
+            defaultClient.getVariables().put("natives_directory", extractNativesTask.flatMap(ExtractNatives::getExtract)
                     .map(dir -> dir.getAsFile().getAbsolutePath()));
             extension.getRuns().withType(ClientRunConfig.class).configureEach(config -> {
+                if (config instanceof ForgeRunConfig) return;
                 config.getParents().add(defaultClient);
-                config.getRunTask().configure(task -> task.classpath(setupVanillaDevTask));
+                config.getRunTask().configure(task -> task.classpath(mainSourceSet.getRuntimeClasspath()));
             });
 
             var defaultData = project.getObjects().newInstance(DataRunConfigImpl.class, "defaultVanillaData");
             defaultData.getMainClass().set("net.minecraft.data.Main");
             extension.getRuns().withType(DataRunConfig.class).configureEach(config -> {
+                if (config instanceof ForgeRunConfig) return;
                 config.getParents().add(defaultData);
-                config.getRunTask().configure(task -> task.classpath(setupVanillaDevTask));
+                config.getRunTask().configure(task -> task.classpath(mainSourceSet.getRuntimeClasspath()));
             });
 
             var defaultServer = project.getObjects().newInstance(ServerRunConfigImpl.class, "defaultVanillaServer");
             defaultServer.getMainClass().set("net.minecraft.server.Main");
             extension.getRuns().withType(ServerRunConfig.class).configureEach(config -> {
+                if (config instanceof ForgeRunConfig) return;
                 config.getParents().add(defaultServer);
-                config.getRunTask().configure(task -> task.classpath(setupVanillaDevTask));
+                config.getRunTask().configure(task -> task.classpath(mainSourceSet.getRuntimeClasspath()));
             });
         }
-        if (forgePresent) {
-            project.getRepositories().maven(repo -> {
-                repo.setName("Forge Maven");
-                repo.setUrl("https://maven.minecraftforge.net/");
-                repo.metadataSources(sources -> {
-                    sources.gradleMetadata();
-                    sources.mavenPom();
-                    sources.artifact();
-                });
-            });
-            var sourceSet = forgeSourceSet.get();
-            configurations.named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(mcVanillaConfiguration.get()));
-            forgeSetup.postSetup(project, extension, setupDevEnv);
-        }
+        if (forgePresent) forgeSetup.postSetup(project, extension, setupDevEnv, extractNativesTask, vanillaMcConfiguration);
         if (fabricPresent) {
             project.getRepositories().maven(repo -> {
                 repo.setName("Fabric Maven");
@@ -234,7 +214,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
             });
             var sourceSet = fabricSourceSet.get();
             dependencies.add(sourceSet.getImplementationConfigurationName(), vanillaDependencyNotation);
-            configurations.named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(mcVanillaConfiguration.get()));
+            configurations.named(sourceSet.getImplementationConfigurationName(), c -> c.extendsFrom(vanillaMcConfiguration.get()));
         }
     }
 

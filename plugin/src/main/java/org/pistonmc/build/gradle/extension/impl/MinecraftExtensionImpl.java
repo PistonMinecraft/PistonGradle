@@ -14,6 +14,8 @@ import org.pistonmc.build.gradle.run.ClientRunConfig;
 import org.pistonmc.build.gradle.run.DataRunConfig;
 import org.pistonmc.build.gradle.run.RunConfig;
 import org.pistonmc.build.gradle.run.ServerRunConfig;
+import org.pistonmc.build.gradle.run.forge.*;
+import org.pistonmc.build.gradle.run.forge.impl.*;
 import org.pistonmc.build.gradle.run.impl.ClientRunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.DataRunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.RunConfigImpl;
@@ -36,17 +38,23 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         this.vmc = vmc;
         this.toolchains = getObjects().newInstance(ModdingToolchainSpecImpl.class, this);
         getVersion().finalizeValueOnRead();
-        getMapping().finalizeValueOnRead();
+        getMappings().finalizeValueOnRead();
         var runs = getRuns();
         runs.registerBinding(RunConfig.class, RunConfigImpl.class);
         runs.registerBinding(ClientRunConfig.class, ClientRunConfigImpl.class);
         runs.registerBinding(DataRunConfig.class, DataRunConfigImpl.class);
         runs.registerBinding(ServerRunConfig.class, ServerRunConfigImpl.class);
+        runs.registerBinding(ForgeRunConfig.class, ForgeRunConfigImpl.class);
+        runs.registerBinding(ForgeClient.class, ForgeClientImpl.class);
+        runs.registerBinding(ForgeData.class, ForgeDataImpl.class);
+        runs.registerBinding(ForgeServer.class, ForgeServerImpl.class);
+        runs.registerBinding(ForgeGameTestServer.class, ForgeGameTestServerImpl.class);
     }
 
     @Override
     public MappingConfig official() {
         var m = getObjects().newInstance(MappingConfig.class);
+        m.getMappingName().set(getVersion().map(v -> "official_" + v));// used by forge
         m.getType().set(MappingTypes.PROGUARD);
         m.getMappings().set(getLayout().file(getVersion().map(vmc::getClientMappingsFile)));
         return m;

@@ -1,21 +1,29 @@
 package org.pistonmc.build.gradle.util;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.util.List;
 import java.util.Map;
 
 public class VariableUtil {
-    public static List<String> replaceVariables(List<String> args, Map<String, String> variables) {
-        return replaceVariables(args, variables, new ObjectArrayList<>(args.size()), true);
-    }
-
     public static List<String> replaceVariables(List<String> args, Map<String, String> variables, boolean dollarBegin) {
         return replaceVariables(args, variables, new ObjectArrayList<>(args.size()), dollarBegin);
     }
 
     public static List<String> replaceVariables(List<String> args, Map<String, String> variables, List<String> target) {
         return replaceVariables(args, variables, target, true);
+    }
+
+    public static Map<String, String> replaceVariables(Map<String, String> args, Map<String, String> variables, boolean dollarBegin) {
+        return replaceVariables(args, variables, new Object2ObjectOpenHashMap<>(args.size()), dollarBegin);
+    }
+
+    public static Map<String, String> replaceVariables(Map<String, String> args, Map<String, String> variables, Map<String, String> target, boolean dollarBegin) {
+        for (String k : args.keySet()) {
+            target.put(k, replaceVariable(args.get(k), variables, dollarBegin));
+        }
+        return target;
     }
 
     public static List<String> replaceVariables(List<String> args, Map<String, String> variables, List<String> target, boolean dollarBegin) {

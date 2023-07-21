@@ -4,6 +4,7 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
 import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.extension.ToolchainConfig;
+import org.pistonmc.build.gradle.mapping.MappingConfig;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -28,6 +29,7 @@ public abstract class ToolchainConfigImpl implements ToolchainConfig {
         } else {
             getEnabled().convention(defaultConfig.getEnabled());
         }
+        getEnabled().finalizeValueOnRead();
     }
 
     @Override
@@ -36,14 +38,23 @@ public abstract class ToolchainConfigImpl implements ToolchainConfig {
     }
 
     public abstract static class ForgeImpl extends ToolchainConfigImpl implements ToolchainConfig.Forge {
+        private final Provider<String> mappingName;
+
         @Inject
         public ForgeImpl(MinecraftExtension extension, ToolchainConfigImpl defaultConfig) {
             super(extension, defaultConfig);
+            this.mappingName = extension.getMappings().flatMap(MappingConfig::getMappingName);
+            getVersion().finalizeValueOnRead();
         }
 
         @Override
         public Provider<String> getArtifactVersion() {
             return extension.getVersion().zip(getVersion(), (mc, forge) -> mc + '-' + forge);
+        }
+
+        @Override
+        public Provider<String> getGeneratedArtifactVersion() {
+            return getArtifactVersion().zip(mappingName, (a, m) -> a + "_mapped_" + m);
         }
     }
 
@@ -51,6 +62,8 @@ public abstract class ToolchainConfigImpl implements ToolchainConfig {
         @Inject
         public FabricImpl(MinecraftExtension extension, ToolchainConfigImpl defaultConfig) {
             super(extension, defaultConfig);
+            getLoaderVersion().finalizeValueOnRead();
+            getApiVersion().finalizeValueOnRead();
         }
     }
 }

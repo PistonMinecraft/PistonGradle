@@ -68,6 +68,13 @@ tasks.named('check') {
 
 publishing {
     repositories {
-        mavenLocal()
+        maven {
+            name = 'PistonGradle'
+            url = 'https://maven.pkg.github.com/PistonMinecraft/PistonGradle'
+            credentials {
+                username = System.getenv("GHP_USERNAME")
+                password = System.getenv("GHP_TOKEN")
+            }
+        }
     }
 }

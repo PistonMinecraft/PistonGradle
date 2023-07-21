@@ -23,8 +23,6 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.*;
 import org.gradle.jvm.toolchain.JavaToolchainService;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.pistonmc.build.gradle.cache.VanillaMinecraftCache;
 import org.pistonmc.build.gradle.forge.config.MCPConfig;
 import org.pistonmc.build.gradle.forge.config.Side;
@@ -54,17 +52,14 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
+import static org.pistonmc.build.gradle.util.DependencyUtil.groupAndNameEquals;
 import static org.pistonmc.build.gradle.util.FileUtil.extractZipTo;
-import static org.pistonmc.build.gradle.util.Utils.artifactEquals;
 
 /**
  * We don't have the functionality to stop at a specific step as there seems no need right now
  */
 public abstract class SetupMCP extends DefaultTask {
     private final Provider<Directory> outputDirectory;
-    private final Provider<Map<String, String>> outputProvider;
-
-    private Map<String, String> output;
 
     @Internal
     public abstract Property<VanillaMinecraftCache> getCache();
@@ -111,17 +106,11 @@ public abstract class SetupMCP extends DefaultTask {
                 throw Utils.wrapInRuntime(e);
             }
         });
-        this.outputProvider = getProject().provider(() -> output);
     }
 
     @OutputDirectory
     public Provider<Directory> getOutputDirectory() {
         return outputDirectory;
-    }
-
-    @Internal
-    public Provider<Map<String, String>> getOutput() {
-        return outputProvider;
     }
 
     @TaskAction
@@ -143,7 +132,8 @@ public abstract class SetupMCP extends DefaultTask {
         getProject().delete(outputDir);
         getProject().mkdir(outputDir);
         var outputs = new Object2ObjectOpenHashMap<String, String>();
-        for (var step : config.steps.get(side)) {
+        var steps = config.steps.get(side);
+        for (var step : steps) {
             var type = step.type();
             getLogger().lifecycle("Executing step {} of type {}", step.name(), step.type());
             var inputs = new Object2ObjectOpenHashMap<>(data);
@@ -169,20 +159,8 @@ public abstract class SetupMCP extends DefaultTask {
                 logFile.createNewFile();
                 try (var os = new FileOutputStream(logFile)) {
                     getProject().javaexec(spec -> {
-                        PrintStream ps = new PrintStream(os) {
-                            @Override
-                            public void println(@Nullable String x) {
-                                System.out.println(x);
-                                super.println(x);
-                            }
-
-                            @Override
-                            public void write(@NotNull byte[] buf, int off, int len) {
-                                System.out.write(buf, off, len);
-                                super.write(buf, off, len);
-                            }
-                        };
-                        spec.setClasspath(forgeSetup.fileCollection(dep -> artifactEquals(dep, func.jar())))
+                        PrintStream ps = new PrintStream(os);
+                        spec.setClasspath(forgeSetup.fileCollection(dep -> groupAndNameEquals(dep, func.jar())))
                                 .setArgs(VariableUtil.replaceVariables(func.args(), inputs, false))
                                 .setStandardOutput(ps)
                                 .setErrorOutput(ps)
@@ -201,7 +179,6 @@ public abstract class SetupMCP extends DefaultTask {
                 }
             }
         }
-        this.output = outputs;
     }
 
     private void runAccessTransformer(UserDevConfig userDevConfig, MCPConfig config, Map<String, String> inputs, Path workingDir, JavaToolchainService toolchains) throws IOException {

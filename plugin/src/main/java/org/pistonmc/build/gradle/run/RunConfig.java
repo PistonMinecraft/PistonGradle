@@ -39,6 +39,8 @@ public interface RunConfig extends Named {
      */
     Property<Boolean> getClient();
 
+    Property<Boolean> getVariableDollarBegin();
+
     default Provider<String> getAllMainClass() {
         return getMainClass().orElse(getParents().flatMap(configs -> configs.stream().map(RunConfig::getAllMainClass)
                 .reduce(Provider::orElse).orElse(null)));

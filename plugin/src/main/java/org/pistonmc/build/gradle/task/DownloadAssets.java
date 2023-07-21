@@ -30,7 +30,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.StandardOpenOption;
 
-public abstract class DownloadAssetsTask extends DefaultTask {
+public abstract class DownloadAssets extends DefaultTask {
     private final FileCollection outputFiles;
 
     @Nested
@@ -42,7 +42,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
     public abstract WorkerExecutor getWorkers();
 
     @Inject
-    public DownloadAssetsTask(ProjectLayout layout) {
+    public DownloadAssets(ProjectLayout layout) {
         getAssets().disallowUnsafeRead();
         getCache().disallowUnsafeRead();
         this.outputFiles = layout.files(getAssets().zip(getCache(), (assets, cache) -> assets.values().stream()

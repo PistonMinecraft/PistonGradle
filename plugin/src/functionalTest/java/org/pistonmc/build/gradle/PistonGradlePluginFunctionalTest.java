@@ -38,7 +38,7 @@ class PistonGradlePluginFunctionalTest {
                 
                 minecraft {
                   version = '1.20.1'
-                  mapping = official()
+                  mappings = official()
                   toolchains {
                     //vanilla()
                     forge {

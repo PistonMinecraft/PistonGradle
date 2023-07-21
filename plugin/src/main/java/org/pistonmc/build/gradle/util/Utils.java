@@ -1,12 +1,14 @@
 package org.pistonmc.build.gradle.util;
 
-import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.file.FileSystemLocation;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class Utils {
     public static Charset forName(@Nullable String charsetName) {
@@ -21,7 +23,11 @@ public class Utils {
         return a.hashCode() == b.hashCode();
     }
 
-    public static boolean artifactEquals(Dependency a, Dependency b) {
-        return Objects.equals(a.getGroup(), b.getGroup()) && a.getName().equals(b.getName());
+    public static String joinAbsoluteFiles(FileCollection files) {
+        return files.getFiles().stream().map(File::getAbsolutePath).collect(Collectors.joining(File.pathSeparator));
+    }
+
+    public static String mapToAbsolutePath(FileSystemLocation l) {
+        return l.getAsFile().getAbsolutePath();
     }
 }

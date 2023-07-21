@@ -41,38 +41,42 @@ public abstract class RunConfigImpl implements RunConfig {
         getVariables().disallowUnsafeRead();
         getFeatures().disallowUnsafeRead();
         getClient().convention(Boolean.FALSE).disallowUnsafeRead();
+        getVariableDollarBegin().convention(Boolean.TRUE).disallowUnsafeRead();
         this.runTask = tasks.register(RunConfig.super.getRunTaskName(), JavaExec.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             var clientConfig = this instanceof ClientRunConfig c ? c : null;
             var variables = getAllVariables();
-            task.getJvmArguments().addAll(getAllJvmArguments().zip(variables, VariableUtil::replaceVariables));
+            boolean dollarBegin = getVariableDollarBegin().get();
+            task.getJvmArguments().addAll(getAllJvmArguments().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin)));
             task.getJvmArguments().addAll(getAllConditionalJvmArguments().zip(variables, (args, v) -> {
                 var ret = new ObjectArrayList<String>();
                 for (Argument.Conditional arg : args) {
                     if (arg.rules().stream().allMatch(Rule::isAllow)) {
-                        VariableUtil.replaceVariables(arg.value(), v, ret);
+                        VariableUtil.replaceVariables(arg.value(), v, ret, dollarBegin);
                     }
                 }
                 return ret;
             }));
-            task.getArgumentProviders().add(getAllGameArguments().zip(variables, VariableUtil::replaceVariables)::get);
+            task.getArgumentProviders().add(getAllGameArguments().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin))::get);
             task.getArgumentProviders().add(getAllConditionalGameArguments().zip(variables, (args, v) -> {
                 var ret = new ObjectArrayList<String>();
                 args: for (Argument.Conditional arg : args) {
                     for (Rule rule : arg.rules()) {
                         if (!rule.isAllow(clientConfig)) continue args;
                     }
-                    VariableUtil.replaceVariables(arg.value(), v, ret);
+                    VariableUtil.replaceVariables(arg.value(), v, ret, dollarBegin);
                 }
                 return ret;
             })::get);
-            task.systemProperties(getAllProperties().get());
-            task.environment(getAllEnvironments().get());
             task.getMainClass().set(getAllMainClass());
             task.setWorkingDir(getWorkingDirectory().map(dir -> {
                 dir.getAsFile().mkdirs();
                 return dir;
             }));
+            task.doFirst(t -> {// For lazy configuration
+                task.systemProperties(getAllProperties().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin)).get());
+                task.environment(getAllEnvironments().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin)).get());
+            });
         });
     }
 

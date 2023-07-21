@@ -26,6 +26,7 @@ import static org.pistonmc.build.gradle.util.Utils.hashEquals;
 
 public class UserDevConfig extends Config {
     public final MCPConfig mcp;
+    public final Dependency mcpDep;
     public final List<Path> ats;
     public final List<Path> sass;
     public final Path binPatches;
@@ -40,11 +41,12 @@ public class UserDevConfig extends Config {
     public final List<Dependency> modules;
     public final Charset sourceFileCharset;
 
-    public UserDevConfig(MCPConfig mcp, List<Path> ats, List<Path> sass, Path binPatches, ExternalJarExec binPatcher,
+    public UserDevConfig(MCPConfig mcp, Dependency mcpDep, List<Path> ats, List<Path> sass, Path binPatches, ExternalJarExec binPatcher,
                          Path patches, Dependency sources, Dependency universal, List<Dependency> libraries,
                          Map<String, RunConfig> runs, String patchesOriginalPrefix, String patchesModifiedPrefix, List<Dependency> modules,
                          Charset sourceFileCharset) {
         this.mcp = mcp;
+        this.mcpDep = mcpDep;
         this.ats = ats;
         this.sass = sass;
         this.binPatches = binPatches;
@@ -76,7 +78,7 @@ public class UserDevConfig extends Config {
             deps.add(sources);
             var universal = dependencies.create(raw.universal);
             deps.add(universal);
-            return new UserDevConfig(mcp, ats, sass, extract.resolve(raw.binpatches), ExternalJarExec.from(raw.binpatcher, dependencies, deps),
+            return new UserDevConfig(mcp, mcpDep, ats, sass, extract.resolve(raw.binpatches), ExternalJarExec.from(raw.binpatcher, dependencies, deps),
                     extract.resolve(raw.patches), sources, universal, nonNull(raw.libraries).stream().map(dependencies::create).toList(),
                     raw.runs, raw.patchesOriginalPrefix, raw.patchesModifiedPrefix, nonNull(raw.modules).stream().map(dependencies::create).toList(),
                     forName(raw.sourceFileCharset));

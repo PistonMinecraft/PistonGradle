@@ -14,7 +14,7 @@ import java.util.List;
 public interface MinecraftExtension {
     Property<String> getVersion();
 
-    Property<MappingConfig> getMapping();
+    Property<MappingConfig> getMappings();
 
     ListProperty<RegularFile> getAccessTransformers();
 

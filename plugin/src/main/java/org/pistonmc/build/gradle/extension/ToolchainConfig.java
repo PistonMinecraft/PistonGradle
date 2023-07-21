@@ -12,6 +12,8 @@ public interface ToolchainConfig {
         Property<String> getVersion();
 
         Provider<String> getArtifactVersion();
+
+        Provider<String> getGeneratedArtifactVersion();
     }
 
     interface Fabric extends ToolchainConfig {

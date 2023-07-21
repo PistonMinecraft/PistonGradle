@@ -15,7 +15,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-public abstract class SetupVanillaDevTask extends DefaultTask {
+public abstract class SetupVanillaDev extends DefaultTask {
     @InputFile
     public abstract RegularFileProperty getInputJar();
     @Nested
@@ -23,7 +23,7 @@ public abstract class SetupVanillaDevTask extends DefaultTask {
     @OutputFile
     public abstract RegularFileProperty getOutputJar();
 
-    public SetupVanillaDevTask() {
+    public SetupVanillaDev() {
         getInputJar().disallowUnsafeRead();
         getMappingConfig().disallowUnsafeRead();
         getOutputJar().disallowUnsafeRead();
@@ -37,7 +37,7 @@ public abstract class SetupVanillaDevTask extends DefaultTask {
                         .withMapping(new ClassifiedMappingReader<>(config.getType().get(),
                                 new FileReader(config.getMappings().get().getAsFile(), StandardCharsets.UTF_8)))
                         .output(getOutputJar().get().getAsFile().toPath())
-                        .targetNamespace(config.getTargetNamespace().getOrElse("unknown"))
+                        .targetNamespace(config.getMappedNamespace().getOrElse("unknown"))
                         .build());
         mcd.deobfuscate();
     }
