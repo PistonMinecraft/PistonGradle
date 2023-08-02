@@ -11,6 +11,7 @@ import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.plugins.BasePlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -26,10 +27,7 @@ import org.pistonmc.build.gradle.extension.MinecraftExtension;
 import org.pistonmc.build.gradle.forge.config.RunConfig;
 import org.pistonmc.build.gradle.forge.config.Side;
 import org.pistonmc.build.gradle.forge.config.UserDevConfig;
-import org.pistonmc.build.gradle.forge.task.GenExtras;
-import org.pistonmc.build.gradle.forge.task.PatchTask;
-import org.pistonmc.build.gradle.forge.task.SetupMCP;
-import org.pistonmc.build.gradle.forge.task.SourcesTask;
+import org.pistonmc.build.gradle.forge.task.*;
 import org.pistonmc.build.gradle.mapping.MappingConfig;
 import org.pistonmc.build.gradle.repo.GeneratedRepo;
 import org.pistonmc.build.gradle.run.forge.*;
@@ -70,6 +68,8 @@ public class ForgeSetup {
     private final TaskProvider<Jar> packRecompile;
     private final TaskProvider<GenExtras> genExtras;
     private final TaskProvider<Zip> packRuntimeMappings;
+    private final TaskProvider<ReobfTask> reobfForgeJar;
+    private TaskProvider<Jar> forgeJar;
 
     private final NamedDomainObjectProvider<Configuration> forgeSetup;
     private final NamedDomainObjectProvider<Configuration> forgeMc;
@@ -110,15 +110,19 @@ public class ForgeSetup {
             c.getDependencies().add(sasJar);
         });
 
+        var tasks = project.getTasks();
         this.sourceSet = sourceSets.register(ForgeConstants.SOURCE_SET, sourceSet -> {
             sourceSet.getJava().srcDirs("src/forge/java");
             sourceSet.getResources().srcDirs("src/forge/resources");
             var mainOutput = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME).getOutput();
             sourceSet.setCompileClasspath(sourceSet.getCompileClasspath().plus(mainOutput));
             sourceSet.setRuntimeClasspath(sourceSet.getRuntimeClasspath().plus(mainOutput));
+            this.forgeJar = tasks.register(sourceSet.getJarTaskName(), Jar.class, task -> {
+                task.from(sourceSet.getOutput());
+                task.getArchiveAppendix().set("forge");
+            });
         });
 
-        var tasks = project.getTasks();
         this.setupMcp = tasks.register("setupMCP", SetupMCP.class, task -> {
             task.setGroup(ForgeConstants.TASK_GROUP);
             task.getCache().set(vmc);
@@ -142,6 +146,7 @@ public class ForgeSetup {
             task.getOutputSourcesJar().set(forgeConfig.getGeneratedArtifactVersion().flatMap(v -> generatedRepo.getPath(FORGE_GROUP, FORGE_ARTIFACT, v, "sources")));
             task.getOutputMethodsCsv().set(runtimeMappings.map(dir -> dir.file("methods.csv")));
             task.getOutputFieldsCsv().set(runtimeMappings.map(dir -> dir.file("fields.csv")));
+            task.getOutputMappings().set(setupBaseDir.map(dir -> dir.file("srg2mcp.tsrg")));
         });
         this.packRuntimeMappings = tasks.register("packForgeRuntimeMappings", Zip.class, task -> {
             task.setGroup(ForgeConstants.TASK_GROUP);
@@ -163,6 +168,12 @@ public class ForgeSetup {
             task.getManifest().from(genRecompile.flatMap(AbstractCompile::getDestinationDirectory).map(dir -> dir.file("META-INF/MANIFEST.MF")));
             task.from(genRecompile.flatMap(AbstractCompile::getDestinationDirectory)).include("**");
             ((RegularFileProperty) task.getArchiveFile()).set(forgeConfig.getGeneratedArtifactVersion().flatMap(v -> generatedRepo.getPath(FORGE_GROUP, FORGE_ARTIFACT, v)));// FIXME: Possibly broken in future versions
+        });
+        this.reobfForgeJar = tasks.register("reobfForgeJar", ReobfTask.class, task -> {
+            task.setGroup(ForgeConstants.TASK_GROUP);
+            task.getInputJar().set(sourceSet.flatMap(s -> tasks.named(s.getJarTaskName(), Jar.class)).flatMap(AbstractArchiveTask::getArchiveFile));
+            task.getMcJar().set(packRecompile.flatMap(AbstractArchiveTask::getArchiveFile));
+            task.getMappings().set(genSources.flatMap(SourcesTask::getOutputMappings));
         });
     }
 
@@ -249,6 +260,7 @@ public class ForgeSetup {
         setupDevEnv.configure(t -> t.dependsOn(packRecompile));
         var tasks = project.getTasks();
         tasks.named(forgeSourceSet.getCompileJavaTaskName(), t -> t.dependsOn(packRecompile));
+        tasks.named(BasePlugin.ASSEMBLE_TASK_NAME, t -> t.dependsOn(reobfForgeJar));
 
         var forgeModules = project.getConfigurations().create("forgeModules");
         forgeModules.setDescription("Configuration that stores all modules from Forge userdev config");

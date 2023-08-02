@@ -9,10 +9,8 @@ import cn.maxpixel.mcdecompiler.mapping.collection.UniqueMapping;
 import cn.maxpixel.mcdecompiler.mapping.component.Descriptor;
 import cn.maxpixel.mcdecompiler.mapping.type.MappingTypes;
 import cn.maxpixel.mcdecompiler.reader.ClassifiedMappingReader;
-import cn.maxpixel.mcdecompiler.util.FileUtil;
-import cn.maxpixel.mcdecompiler.util.JarUtil;
-import cn.maxpixel.mcdecompiler.util.LambdaUtil;
-import cn.maxpixel.mcdecompiler.util.NamingUtil;
+import cn.maxpixel.mcdecompiler.util.*;
+import cn.maxpixel.mcdecompiler.writer.ClassifiedMappingWriter;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFile;
@@ -56,6 +54,8 @@ public abstract class SourcesTask extends DefaultTask {
     public abstract MappingConfig getMappings();
     @OutputFile
     public abstract RegularFileProperty getOutputSourcesJar();
+    @OutputFile
+    public abstract RegularFileProperty getOutputMappings();
     @OutputFile
     public abstract RegularFileProperty getOutputMethodsCsv();
     @OutputFile
@@ -137,7 +137,7 @@ public abstract class SourcesTask extends DefaultTask {
         }
     }
 
-    private UniqueMapping<PairedMapping> loadMappings(Object2ObjectOpenHashMap<String, ? extends ClassMapping<? extends Mapping>> obf2srg) throws FileNotFoundException {
+    private UniqueMapping<PairedMapping> loadMappings(Object2ObjectOpenHashMap<String, ? extends ClassMapping<? extends Mapping>> obf2srg) throws IOException {
         var config = getMappings();
         ClassifiedMappingReader<?> mappingReader = new ClassifiedMappingReader<>(config.getType().get(),
                 new BufferedReader(new FileReader(getMappings().getMappings().get().getAsFile())));
@@ -156,6 +156,35 @@ public abstract class SourcesTask extends DefaultTask {
             }
             remapper = new ClassifiedMappingRemapper(mr.mappings, actualObf, mapped);
         } else remapper = new ClassifiedMappingRemapper(((ClassifiedMappingReader<PairedMapping>) mappingReader).mappings);
+
+        ClassifiedMappingWriter<PairedMapping> writer = new ClassifiedMappingWriter<>(MappingTypes.TSRG_V1);// FIXME: badly organized code
+        obf2srg.values().forEach(cm -> {
+            String mappedClass = remapper.map(cm.mapping.getUnmappedName());
+            if (mappedClass != null) {
+                ClassMapping<PairedMapping> ncm = new ClassMapping<>(new PairedMapping(cm.mapping.getMappedName(), mappedClass));
+                for (var field : cm.getFields()) {
+                    String mappedField = remapper.mapFieldName(cm.mapping.getUnmappedName(), field.getUnmappedName(), null);
+                    if (mappedField != null) {
+                        ncm.addField(MappingUtil.Paired.o(field.getMappedName(), mappedField));
+                    }
+                }
+                for (var method : cm.getMethods()) {
+                    String mappedMethod = remapper.mapMethodName(cm.mapping.getUnmappedName(), method.getUnmappedName(), method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor);
+                    if (mappedMethod != null) {
+                        ncm.addMethod(MappingUtil.Paired.duo(method.getMappedName(), mappedMethod, remapper.getMappedDescByUnmappedDesc(method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor)));
+                    }
+                }
+                writer.addMapping(ncm);
+            }
+        });
+        var mappingFile = getOutputMappings().getAsFile().get();
+        mappingFile.delete();
+        mappingFile.getParentFile().mkdirs();
+        mappingFile.createNewFile();
+        try (var fos = new FileOutputStream(getOutputMappings().getAsFile().get())) {
+            writer.writeTo(fos);
+        }
+
         UniqueMapping<PairedMapping> ret = new UniqueMapping<>();
         obf2srg.values().forEach(cm -> {
             String mappedClass = remapper.map(cm.mapping.getUnmappedName());
