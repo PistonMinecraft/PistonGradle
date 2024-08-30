@@ -1,6 +1,6 @@
 package org.pistonmc.build.gradle.mapping;
 
-import cn.maxpixel.mcdecompiler.mapping.type.MappingType;
+import cn.maxpixel.mcdecompiler.mapping.format.MappingFormat;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
@@ -18,7 +18,7 @@ public interface MappingConfig {
     Property<String> getMappingName();
 
     @Internal
-    Property<MappingType.Classified<?>> getType();
+    Property<MappingFormat.Classified<?>> getType();
 
     @InputFile
     RegularFileProperty getMappings();

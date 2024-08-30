@@ -1,8 +1,8 @@
 package org.pistonmc.build.gradle.forge.task;
 
-import cn.maxpixel.mcdecompiler.util.FileUtil;
-import cn.maxpixel.mcdecompiler.util.JarUtil;
-import cn.maxpixel.mcdecompiler.util.LambdaUtil;
+import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
+import cn.maxpixel.mcdecompiler.common.app.util.JarUtil;
+import cn.maxpixel.mcdecompiler.common.util.LambdaUtil;
 import codechicken.diffpatch.cli.CliOperation;
 import codechicken.diffpatch.cli.PatchOperation;
 import codechicken.diffpatch.util.LoggingOutputStream;
@@ -74,7 +74,7 @@ public abstract class PatchTask extends DefaultTask {
                     Path patchedPath = patched.getPath(p.toString());
                     if (Files.notExists(patchedPath)) {
                         try (var is = Files.newInputStream(p);
-                             var os = Files.newOutputStream(FileUtil.ensureFileExist(patchedPath))) {
+                             var os = Files.newOutputStream(FileUtil.makeParentDirs(patchedPath))) {
                             is.transferTo(os);
                         }
                     }

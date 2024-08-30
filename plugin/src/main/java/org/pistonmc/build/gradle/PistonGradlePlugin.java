@@ -24,6 +24,7 @@ import org.pistonmc.build.gradle.run.forge.ForgeRunConfig;
 import org.pistonmc.build.gradle.run.impl.ClientRunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.DataRunConfigImpl;
 import org.pistonmc.build.gradle.run.impl.ServerRunConfigImpl;
+import org.pistonmc.build.gradle.settings.PistonGradleSettingsPlugin;
 import org.pistonmc.build.gradle.task.DownloadAssets;
 import org.pistonmc.build.gradle.task.ExtractNatives;
 import org.pistonmc.build.gradle.task.SetupVanillaDev;
@@ -58,6 +59,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
     private TaskProvider<ExtractNatives> extractNativesTask;
 
     private NamedDomainObjectProvider<Configuration> vanillaMcConfiguration;
+    private NamedDomainObjectProvider<Configuration> mappingsConfiguration;
 
     private SourceSet mainSourceSet;
     private NamedDomainObjectProvider<SourceSet> fabricSourceSet;
@@ -65,11 +67,12 @@ public class PistonGradlePlugin implements Plugin<Project> {
     private ForgeSetup forgeSetup;
 
     public void apply(@NotNull Project project) {
+        project.getPluginManager().apply(PistonGradleSettingsPlugin.class);
+        project.getPluginManager().apply(JavaPlugin.class);
+
         this.vmc = new VanillaMinecraftCache(project);
         this.generatedRepo = new GeneratedRepo(project.getLayout().getBuildDirectory().dir(Constants.GENERATED_REPO_DIR));
         var manifest = project.provider(vmc::getVersionManifest);
-
-        project.getPluginManager().apply(JavaPlugin.class);
 
         this.extension = project.getExtensions().create(MinecraftExtension.class, Constants.MINECRAFT_EXTENSION, MinecraftExtensionImpl.class, vmc);
         extension.getVersion().convention(manifest.map(VersionManifest::latestRelease));
@@ -94,6 +97,12 @@ public class PistonGradlePlugin implements Plugin<Project> {
             config.setTransitive(false);
             config.setCanBeConsumed(false);
         });
+        this.mappingsConfiguration = configurations.register(Constants.MAPPINGS_CONFIGURATION, config -> {
+            config.setDescription("Used to resolve obfuscation mapping dependencies");
+            config.setVisible(false);
+            config.setTransitive(false);
+            config.setCanBeConsumed(false);
+        });
 
         var sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         this.mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
@@ -110,7 +119,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
             task.setGroup(Constants.TASK_GROUP);
             task.getInputJar().set(project.getLayout().file(extension.getVersion().map(vmc::getClientJarFile)));
             task.getMappingConfig().set(extension.getMappings());
-            task.getOutputJar().set(extension.getVersion().flatMap(v -> generatedRepo.getPath("net.minecraft", "vanilla", v, "client")));
+            task.getOutputJar().set(extension.getVersion().flatMap(v -> generatedRepo.getPath("net.minecraft", "client", v)));
         });
         this.prepareAssetsTask = tasks.register(Constants.PREPARE_ASSETS_TASK, DownloadAssets.class, task -> {
             task.setGroup(Constants.TASK_GROUP);

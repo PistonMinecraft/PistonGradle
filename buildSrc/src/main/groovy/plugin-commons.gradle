@@ -1,0 +1,51 @@
+plugins {
+    id 'commons'
+    // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+}
+
+testing {
+    suites {
+        // Configure the built-in test suite
+        test {
+            // Use JUnit Jupiter test framework
+            useJUnitJupiter('5.9.1')
+        }
+
+        // Create a new test suite
+        functionalTest(JvmTestSuite) {
+            dependencies {
+                // functionalTest test suite depends on the production code in tests
+                implementation project()
+            }
+
+            targets {
+                all {
+                    // This test suite should run after the built-in test suite has run its tests
+                    testTask.configure { shouldRunAfter(test) }
+                }
+            }
+        }
+    }
+}
+
+gradlePlugin.testSourceSets.add(sourceSets.functionalTest)
+
+tasks.named('check') {
+    // Include functionalTest as part of the check lifecycle
+    dependsOn(testing.suites.functionalTest)
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'PistonGradle'
+            url = 'https://maven.pkg.github.com/PistonMinecraft/PistonGradle'
+            credentials {
+                username = System.getenv("GHP_USERNAME")
+                password = System.getenv("GHP_TOKEN")
+            }
+        }
+    }
+}

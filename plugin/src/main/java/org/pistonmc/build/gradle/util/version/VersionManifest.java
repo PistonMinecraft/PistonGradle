@@ -1,7 +1,6 @@
 package org.pistonmc.build.gradle.util.version;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
 import com.google.gson.TypeAdapter;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
@@ -13,7 +12,7 @@ import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -31,17 +30,17 @@ public record VersionManifest(String latestRelease, String latestSnapshot, Map<S
         @Override
         public VersionManifest read(JsonReader in) throws IOException {
             in.beginObject();
-            Optional<JsonObject> latest = Optional.empty();
-            Optional<List<Entry>> versions = Optional.empty();
+            JsonObject latest = null;
+            List<Entry> versions = null;
             while (in.peek() != JsonToken.END_OBJECT) switch (in.nextName()) {
-                case "latest" -> latest = Optional.of(PistonGradlePlugin.GSON.fromJson(in, JsonObject.class));
-                case "versions" -> versions = Optional.of(PistonGradlePlugin.GSON.fromJson(in, new TypeToken<>() {}));
+                case "latest" -> latest = PistonGradlePlugin.GSON.fromJson(in, JsonObject.class);
+                case "versions" -> versions = PistonGradlePlugin.GSON.fromJson(in, new TypeToken<>() {});
                 default -> throw new IOException("Invalid version manifest");
             }
             in.endObject();
-            JsonObject o = latest.orElseThrow();
+            JsonObject o = Objects.requireNonNull(latest);
             return new VersionManifest(o.get("release").getAsString(), o.get("snapshot").getAsString(),
-                    versions.orElseThrow().stream().collect(Collectors.toMap(Entry::id, Function.identity())));
+                    Objects.requireNonNull(versions).stream().collect(Collectors.toMap(Entry::id, Function.identity())));
         }
     }
 }

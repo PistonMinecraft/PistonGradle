@@ -1,7 +1,6 @@
 package org.pistonmc.build.gradle.task;
 
-import cn.maxpixel.mcdecompiler.MinecraftDecompiler;
-import cn.maxpixel.mcdecompiler.reader.ClassifiedMappingReader;
+import cn.maxpixel.mcdecompiler.api.MinecraftDecompiler;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
@@ -34,8 +33,7 @@ public abstract class SetupVanillaDev extends DefaultTask {
         var config = getMappingConfig().get();
         MinecraftDecompiler mcd = new MinecraftDecompiler(
                 new MinecraftDecompiler.OptionBuilder(getInputJar().get().getAsFile().toPath())
-                        .withMapping(new ClassifiedMappingReader<>(config.getType().get(),
-                                new FileReader(config.getMappings().get().getAsFile(), StandardCharsets.UTF_8)))
+                        .withMapping(config.getType().get().read(new FileReader(config.getMappings().get().getAsFile(), StandardCharsets.UTF_8)))
                         .output(getOutputJar().get().getAsFile().toPath())
                         .targetNamespace(config.getMappedNamespace().getOrElse("unknown"))
                         .build());

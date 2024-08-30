@@ -1,7 +1,7 @@
 package org.pistonmc.build.gradle.cache;
 
-import cn.maxpixel.mcdecompiler.util.FileUtil;
-import cn.maxpixel.mcdecompiler.util.Utils;
+import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
+import cn.maxpixel.mcdecompiler.common.util.Utils;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
@@ -41,7 +41,8 @@ public class VanillaMinecraftCache {
         this.assetsDir = cacheDir.resolve("assets");
         this.versionsDir = cacheDir.resolve("versions");
         this.versionManifestFile = versionsDir.resolve("version_manifest_v2.json");
-        this.forceUpdateVersionManifest = providers.gradleProperty(Constants.FORCE_UPDATE_VERSION_MANIFEST).map(Boolean::parseBoolean).orElse(false);
+        this.forceUpdateVersionManifest = providers.gradleProperty(Constants.FORCE_UPDATE_VERSION_MANIFEST)
+                .orElse(providers.systemProperty(Constants.FORCE_UPDATE_VERSION_MANIFEST)).map(Boolean::parseBoolean).orElse(Boolean.FALSE);
     }
 
     private VersionManifest versionManifest;
@@ -54,8 +55,9 @@ public class VanillaMinecraftCache {
                     System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
                 logger.lifecycle("Fetching version manifest...");
                 PistonGradlePlugin.CLIENT.send(MANIFEST_REQUEST, HttpResponse.BodyHandlers.ofFile(
-                        FileUtil.ensureFileExist(versionManifestFile), StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
-                logger.info("Fetched version manifest");
+                        FileUtil.makeParentDirs(versionManifestFile), StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+                logger.lifecycle("Fetched version manifest");
             }
             try (var reader = Files.newBufferedReader(versionManifestFile)) {
                 return this.versionManifest = PistonGradlePlugin.GSON.fromJson(reader, VersionManifest.class);
@@ -90,8 +92,8 @@ public class VanillaMinecraftCache {
             if (!FileUtil.verify(path, version.sha1())) {
                 var request = HttpRequest.newBuilder(new URI(version.url())).build();
                 logger.lifecycle("Downloading version json for Minecraft {}...", id);
-                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.ensureFileExist(path),
-                        StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.makeParentDirs(path),
+                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
                 logger.info("Downloaded version json for Minecraft {}", id);
             }
             try (var reader = Files.newBufferedReader(path)) {
@@ -109,8 +111,8 @@ public class VanillaMinecraftCache {
             if (!FileUtil.verify(path, version.sha1(), version.size())) {
                 var request = HttpRequest.newBuilder(new URI(version.url())).build();
                 logger.lifecycle("Downloading {} for Minecraft {}...", logName, id);
-                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.ensureFileExist(path),
-                        StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.makeParentDirs(path),
+                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
                 logger.info("Downloaded {} for Minecraft {}", logName, id);
             }
         } catch (IOException | URISyntaxException | InterruptedException e) {
@@ -157,8 +159,8 @@ public class VanillaMinecraftCache {
             if (!FileUtil.verify(path, file.sha1(), file.size())) {
                 var request = HttpRequest.newBuilder(new URI(file.url())).build();
                 logger.info("Downloading logging config to {}...", path);
-                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.ensureFileExist(path),
-                        StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.makeParentDirs(path),
+                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
                 logger.info("Downloaded logging config");
             }
         } catch (IOException | URISyntaxException | InterruptedException e) {
@@ -177,8 +179,8 @@ public class VanillaMinecraftCache {
             if (!FileUtil.verify(path, assetIndex.sha1(), assetIndex.size())) {
                 var request = HttpRequest.newBuilder(new URI(assetIndex.url())).build();
                 logger.info("Downloading asset index to {}...", path);
-                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.ensureFileExist(path),
-                        StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.makeParentDirs(path),
+                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
                 logger.info("Downloaded asset index config");
             }
             try (var reader = Files.newBufferedReader(path)) {

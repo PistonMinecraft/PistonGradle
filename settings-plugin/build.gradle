@@ -1,0 +1,15 @@
+plugins {
+    id 'plugin-commons'
+}
+
+base.archivesName = 'pg-settings'
+
+gradlePlugin {
+    // Define the plugin
+    plugins {
+        pistonGradle {
+            id = 'org.pistonmc.build.settings'
+            implementationClass = 'org.pistonmc.build.gradle.settings.PistonGradlePlugin'
+        }
+    }
+}

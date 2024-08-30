@@ -1,52 +1,16 @@
 plugins {
-    id 'idea'
-    // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
-    id 'java-gradle-plugin'
-    id 'maven-publish'
+    id 'plugin-commons'
 }
 
-group = 'org.pistonmc.build'
 base.archivesName = 'pistongradle'
-version = '0.1-SNAPSHOT'
 
 dependencies {
-    implementation gradleApi()
-    implementation('cn.maxpixel:minecraft-decompiler:3.3-SNAPSHOT') {
+    implementation projects.settingsPlugin
+
+    implementation(libs.bundles.mcd) {
         exclude module: 'jpot-simple'
     }
-    implementation 'net.minecraftforge:DiffPatch:2.0.7:all'
-}
-
-java {
-    withSourcesJar()
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
-
-testing {
-    suites {
-        // Configure the built-in test suite
-        test {
-            // Use JUnit Jupiter test framework
-            useJUnitJupiter('5.9.1')
-        }
-
-        // Create a new test suite
-        functionalTest(JvmTestSuite) {
-            dependencies {
-                // functionalTest test suite depends on the production code in tests
-                implementation project()
-            }
-
-            targets {
-                all {
-                    // This test suite should run after the built-in test suite has run its tests
-                    testTask.configure { shouldRunAfter(test) } 
-                }
-            }
-        }
-    }
+    implementation variantOf(libs.diffpatch) { classifier('all') }
 }
 
 gradlePlugin {
@@ -55,26 +19,6 @@ gradlePlugin {
         pistonGradle {
             id = 'org.pistonmc.build'
             implementationClass = 'org.pistonmc.build.gradle.PistonGradlePlugin'
-        }
-    }
-}
-
-gradlePlugin.testSourceSets.add(sourceSets.functionalTest)
-
-tasks.named('check') {
-    // Include functionalTest as part of the check lifecycle
-    dependsOn(testing.suites.functionalTest)
-}
-
-publishing {
-    repositories {
-        maven {
-            name = 'PistonGradle'
-            url = 'https://maven.pkg.github.com/PistonMinecraft/PistonGradle'
-            credentials {
-                username = System.getenv("GHP_USERNAME")
-                password = System.getenv("GHP_TOKEN")
-            }
         }
     }
 }

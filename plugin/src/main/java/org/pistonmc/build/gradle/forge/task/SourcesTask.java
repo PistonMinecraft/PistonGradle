@@ -1,16 +1,19 @@
 package org.pistonmc.build.gradle.forge.task;
 
-import cn.maxpixel.mcdecompiler.asm.ClassifiedMappingRemapper;
+import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
+import cn.maxpixel.mcdecompiler.common.app.util.JarUtil;
+import cn.maxpixel.mcdecompiler.common.util.LambdaUtil;
 import cn.maxpixel.mcdecompiler.mapping.Mapping;
 import cn.maxpixel.mcdecompiler.mapping.NamespacedMapping;
 import cn.maxpixel.mcdecompiler.mapping.PairedMapping;
 import cn.maxpixel.mcdecompiler.mapping.collection.ClassMapping;
+import cn.maxpixel.mcdecompiler.mapping.collection.ClassifiedMapping;
 import cn.maxpixel.mcdecompiler.mapping.collection.UniqueMapping;
 import cn.maxpixel.mcdecompiler.mapping.component.Descriptor;
-import cn.maxpixel.mcdecompiler.mapping.type.MappingTypes;
-import cn.maxpixel.mcdecompiler.reader.ClassifiedMappingReader;
-import cn.maxpixel.mcdecompiler.util.*;
-import cn.maxpixel.mcdecompiler.writer.ClassifiedMappingWriter;
+import cn.maxpixel.mcdecompiler.mapping.format.MappingFormats;
+import cn.maxpixel.mcdecompiler.mapping.remapper.ClassifiedMappingRemapper;
+import cn.maxpixel.mcdecompiler.mapping.trait.NamespacedTrait;
+import cn.maxpixel.mcdecompiler.mapping.util.MappingUtil;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFile;
@@ -99,7 +102,7 @@ public abstract class SourcesTask extends DefaultTask {
                 String path = patchedPath.toString();
                 Path sourcesPath = sources.getPath(path);
                 try (var is = Files.newInputStream(patchedPath);
-                     var os = Files.newOutputStream(FileUtil.ensureFileExist(sourcesPath))) {
+                     var os = Files.newOutputStream(FileUtil.makeParentDirs(sourcesPath))) {
                     if (path.endsWith(".java")) {
                         try (BufferedReader br = new BufferedReader(new InputStreamReader(is, encoding));
                              PrintStream ps = new PrintStream(os, false, encoding)) {
@@ -139,42 +142,40 @@ public abstract class SourcesTask extends DefaultTask {
 
     private UniqueMapping<PairedMapping> loadMappings(Object2ObjectOpenHashMap<String, ? extends ClassMapping<? extends Mapping>> obf2srg) throws IOException {
         var config = getMappings();
-        ClassifiedMappingReader<?> mappingReader = new ClassifiedMappingReader<>(config.getType().get(),
-                new BufferedReader(new FileReader(getMappings().getMappings().get().getAsFile())));
+        ClassifiedMapping<?> mappings = config.getType().get().read(new FileReader(getMappings().getMappings().get().getAsFile(), StandardCharsets.UTF_8));
         ClassifiedMappingRemapper remapper;
-        if (mappingReader.isNamespaced()) {
-            ClassifiedMappingReader<NamespacedMapping> mr = (ClassifiedMappingReader<NamespacedMapping>) mappingReader;
-            var actualObf = NamingUtil.findSourceNamespace(mr.mappings);
+        if (mappings.hasTrait(NamespacedTrait.class)) {
+            var actualObf = mappings.getSourceNamespace();
             var mapped = config.getMappedNamespace().get();
             if (actualObf.equals(mapped)) throw new IllegalArgumentException("Obf and mapped namespaces are the same");
             if (config.getObfNamespace().isPresent()) {
                 var configObf = config.getObfNamespace().get();
                 if (configObf.equals(mapped)) throw new IllegalArgumentException("Obf and mapped namespaces are the same");
                 if (!configObf.equals(actualObf)) {
-                    ClassifiedMappingReader.swap(mr, actualObf, configObf);
+                    mappings.swap(actualObf, configObf);
                 }
             }
-            remapper = new ClassifiedMappingRemapper(mr.mappings, actualObf, mapped);
-        } else remapper = new ClassifiedMappingRemapper(((ClassifiedMappingReader<PairedMapping>) mappingReader).mappings);
+            remapper = new ClassifiedMappingRemapper((ClassifiedMapping<NamespacedMapping>) mappings, actualObf, mapped);
+        } else remapper = new ClassifiedMappingRemapper((ClassifiedMapping<PairedMapping>) mappings);
 
-        ClassifiedMappingWriter<PairedMapping> writer = new ClassifiedMappingWriter<>(MappingTypes.TSRG_V1);// FIXME: badly organized code
+        ClassifiedMapping<PairedMapping> output = new ClassifiedMapping<>();// FIXME: badly organized code
         obf2srg.values().forEach(cm -> {
-            String mappedClass = remapper.map(cm.mapping.getUnmappedName());
+            String mappedClass = remapper.mapClass(cm.mapping.getUnmappedName());
             if (mappedClass != null) {
                 ClassMapping<PairedMapping> ncm = new ClassMapping<>(new PairedMapping(cm.mapping.getMappedName(), mappedClass));
                 for (var field : cm.getFields()) {
-                    String mappedField = remapper.mapFieldName(cm.mapping.getUnmappedName(), field.getUnmappedName(), null);
+                    String mappedField = remapper.mapField(cm.mapping.getUnmappedName(), field.getUnmappedName());
                     if (mappedField != null) {
                         ncm.addField(MappingUtil.Paired.o(field.getMappedName(), mappedField));
                     }
                 }
                 for (var method : cm.getMethods()) {
-                    String mappedMethod = remapper.mapMethodName(cm.mapping.getUnmappedName(), method.getUnmappedName(), method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor);
+                    String mappedMethod = remapper.mapMethod(cm.mapping.getUnmappedName(), method.getUnmappedName(), method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor);
                     if (mappedMethod != null) {
-                        ncm.addMethod(MappingUtil.Paired.duo(method.getMappedName(), mappedMethod, remapper.getMappedDescByUnmappedDesc(method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor)));
+                        ncm.addMethod(MappingUtil.Paired.duo(method.getMappedName(), mappedMethod, remapper.mapMethodDesc(method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor)));
                     }
                 }
-                writer.addMapping(ncm);
+                output.classes.add(ncm);
             }
         });
         var mappingFile = getOutputMappings().getAsFile().get();
@@ -182,16 +183,16 @@ public abstract class SourcesTask extends DefaultTask {
         mappingFile.getParentFile().mkdirs();
         mappingFile.createNewFile();
         try (var fos = new FileOutputStream(getOutputMappings().getAsFile().get())) {
-            writer.writeTo(fos);
+            MappingFormats.TSRG_V1.write(output, fos);
         }
 
         UniqueMapping<PairedMapping> ret = new UniqueMapping<>();
         obf2srg.values().forEach(cm -> {
-            String mappedClass = remapper.map(cm.mapping.getUnmappedName());
+            String mappedClass = remapper.mapClass(cm.mapping.getUnmappedName());
             if (mappedClass != null) {
                 ret.classes.add(new PairedMapping(cm.mapping.getMappedName(), mappedClass));
                 for (var field : cm.getFields()) {
-                    String mappedField = remapper.mapFieldName(cm.mapping.getUnmappedName(), field.getUnmappedName(), null);
+                    String mappedField = remapper.mapField(cm.mapping.getUnmappedName(), field.getUnmappedName());
                     if (mappedField != null) {
                         ret.fields.add(new PairedMapping(field.getMappedName(), mappedField));
                     }
@@ -200,7 +201,7 @@ public abstract class SourcesTask extends DefaultTask {
                     if ("<init>".equals(method.getUnmappedName()) || "<clinit>".equals(method.getUnmappedName())) {
                         continue;
                     }
-                    String mappedMethod = remapper.mapMethodName(cm.mapping.getUnmappedName(), method.getUnmappedName(), method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor);
+                    String mappedMethod = remapper.mapMethod(cm.mapping.getUnmappedName(), method.getUnmappedName(), method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor);
                     if (mappedMethod != null) {
                         ret.methods.add(new PairedMapping(method.getMappedName(), mappedMethod));
                     }
@@ -210,15 +211,15 @@ public abstract class SourcesTask extends DefaultTask {
         return ret;
     }
 
-    private Object2ObjectOpenHashMap<String, ? extends ClassMapping<? extends Mapping>> loadObf2Srg() throws FileNotFoundException {
-        ClassifiedMappingReader<NamespacedMapping> reader = new ClassifiedMappingReader<>(MappingTypes.TSRG_V2, // TODO: Support previous versions that don't use tsrgv2
-                new BufferedReader(new FileReader(getObf2Srg().get().getAsFile())));
+    // TODO: Support previous versions that don't use tsrgv2
+    private Object2ObjectOpenHashMap<String, ? extends ClassMapping<? extends Mapping>> loadObf2Srg() throws IOException {
+        ClassifiedMapping<NamespacedMapping> mappings = MappingFormats.TSRG_V2.read(new FileReader(getObf2Srg().get().getAsFile(), StandardCharsets.UTF_8));
         final Map<String, ClassMapping<PairedMapping>> obf2official;
         if (getOfficial().get()) {
-            ClassifiedMappingReader<PairedMapping> obf2off = new ClassifiedMappingReader<>(MappingTypes.PROGUARD, new BufferedReader(new FileReader(getObf2Official().get().getAsFile())));
-            obf2official = ClassMapping.genMappingsByUnmappedNameMap(obf2off.mappings);
+            var obf2off = MappingFormats.PROGUARD.read(new FileReader(getObf2Official().get().getAsFile(), StandardCharsets.UTF_8));
+            obf2official = ClassifiedMappingRemapper.genMappingsByUnmappedNameMap(obf2off.classes);
         } else obf2official = null;
-        reader.mappings.forEach(cm -> {
+        mappings.classes.forEach(cm -> {
             var cmm = cm.mapping;
             cmm.setMappedNamespace("srg");
             for (NamespacedMapping field : cm.getFields()) {
@@ -234,7 +235,7 @@ public abstract class SourcesTask extends DefaultTask {
                 }
             }
         });
-        return ClassMapping.genMappingsByNamespaceMap(reader.mappings, "srg");
+        return ClassifiedMappingRemapper.genMappingsByNamespaceMap(mappings.classes, "srg");
     }
 
     private boolean injectJavadocs(String pkg) {// TODO

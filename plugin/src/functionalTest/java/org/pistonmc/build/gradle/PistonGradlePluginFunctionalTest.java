@@ -40,7 +40,7 @@ class PistonGradlePluginFunctionalTest {
                   version = '1.20.1'
                   mappings = official()
                   toolchains {
-                    //vanilla()
+                    vanilla()
                     forge {
                       version = '47.1.28'
                     }

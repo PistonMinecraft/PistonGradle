@@ -1,9 +1,9 @@
 package org.pistonmc.build.gradle.forge.task;
 
-import cn.maxpixel.mcdecompiler.util.FileUtil;
-import cn.maxpixel.mcdecompiler.util.JarUtil;
-import cn.maxpixel.mcdecompiler.util.LambdaUtil;
-import cn.maxpixel.mcdecompiler.util.Utils;
+import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
+import cn.maxpixel.mcdecompiler.common.app.util.JarUtil;
+import cn.maxpixel.mcdecompiler.common.util.LambdaUtil;
+import cn.maxpixel.mcdecompiler.common.util.Utils;
 import codechicken.diffpatch.cli.CliOperation;
 import codechicken.diffpatch.cli.PatchOperation;
 import codechicken.diffpatch.util.LoggingOutputStream;
@@ -298,7 +298,7 @@ public abstract class SetupMCP extends DefaultTask {
                  var files = FileUtil.iterateFiles(in.getPath(""))) {
                 files.filter(path -> filter.contains(path.toString()) == whitelist).forEach(LambdaUtil.unwrapConsumer(path -> {
                     try (var is = Files.newInputStream(path);
-                         var os = Files.newOutputStream(FileUtil.ensureFileExist(out.getPath(path.toString())), StandardOpenOption.WRITE)) {
+                         var os = Files.newOutputStream(FileUtil.makeParentDirs(out.getPath(path.toString())))) {
                         is.transferTo(os);
                     }
                 }));
@@ -342,7 +342,7 @@ public abstract class SetupMCP extends DefaultTask {
             } else {
                 libs = mcVanillaConfig.getFiles().stream().map(File::getAbsolutePath).collect(ObjectOpenHashSet.toSet());
             }
-            try (PrintStream ps = new PrintStream(Files.newOutputStream(FileUtil.ensureFileExist(output)), false, config.encoding)) {
+            try (PrintStream ps = new PrintStream(Files.newOutputStream(FileUtil.makeParentDirs(output)), false, config.encoding)) {
                 libs.stream().map("-e="::concat).forEach(ps::println);
                 ps.flush();
             }
@@ -368,7 +368,7 @@ public abstract class SetupMCP extends DefaultTask {
                  var files = FileUtil.iterateFiles(in.getPath(""))) {
                 files.forEach(LambdaUtil.unwrapConsumer(path -> {
                     try (var is = Files.newInputStream(path);
-                         var os = Files.newOutputStream(FileUtil.ensureFileExist(out.getPath(path.toString())), StandardOpenOption.WRITE)) {
+                         var os = Files.newOutputStream(FileUtil.makeParentDirs(out.getPath(path.toString())))) {
                         is.transferTo(os);
                     }
                 }));
@@ -378,7 +378,7 @@ public abstract class SetupMCP extends DefaultTask {
                 for (var entry : injectFiles.entrySet()) {
                     String path = entry.getKey();
                     if (Side.SERVER == side ? path.contains("/client/") : path.contains("/server/")) continue;
-                    try (var os = Files.newOutputStream(FileUtil.ensureFileExist(out.getPath(path)), StandardOpenOption.WRITE)) {
+                    try (var os = Files.newOutputStream(FileUtil.makeParentDirs(out.getPath(path)))) {
                         os.write(entry.getValue());
                     }
                 }

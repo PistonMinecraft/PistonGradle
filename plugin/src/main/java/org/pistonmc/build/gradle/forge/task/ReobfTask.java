@@ -1,8 +1,7 @@
 package org.pistonmc.build.gradle.forge.task;
 
-import cn.maxpixel.mcdecompiler.MinecraftDecompiler;
-import cn.maxpixel.mcdecompiler.mapping.type.MappingTypes;
-import cn.maxpixel.mcdecompiler.reader.ClassifiedMappingReader;
+import cn.maxpixel.mcdecompiler.api.MinecraftDecompiler;
+import cn.maxpixel.mcdecompiler.mapping.format.MappingFormats;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputFile;
@@ -32,7 +31,7 @@ public abstract class ReobfTask extends DefaultTask {
     @TaskAction
     public void run() throws FileNotFoundException {
         MinecraftDecompiler mcd = new MinecraftDecompiler(new MinecraftDecompiler.OptionBuilder(getInputJar().get().getAsFile().toPath(), true)
-                .withMapping(new ClassifiedMappingReader<>(MappingTypes.TSRG_V1, new FileInputStream(getMappings().get().getAsFile())))
+                .withMapping(MappingFormats.TSRG_V1.read(new FileInputStream(getMappings().get().getAsFile())))
                 .addExtraJar(getMcJar().get().getAsFile().toPath())
                 .addExtraClass("*")
                 .output(getOutputJar().get().getAsFile().toPath())

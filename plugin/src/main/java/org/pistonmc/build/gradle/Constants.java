@@ -15,6 +15,7 @@ public interface Constants {
      * This configuration marks all dependencies from vanilla mc
      */
     String VANILLA_MC_CONFIGURATION = "vanillaMinecraft";
+    String MAPPINGS_CONFIGURATION = "pgMappings";
 
     String TASK_GROUP = "piston gradle";
     String SETUP_DEV_ENV_TASK = "setupDevEnv";
@@ -22,7 +23,7 @@ public interface Constants {
     String PREPARE_ASSETS_TASK = "prepareAssets";
     String EXTRACT_NATIVES_TASK = "extractNatives";
 
-    String FORCE_UPDATE_VERSION_MANIFEST = PACKAGE_NAME + ".update.manifest.force";
+    String FORCE_UPDATE_VERSION_MANIFEST = PACKAGE_NAME + ".update-manifest.force";
     String MINECRAFT_EXTENSION = "minecraft";
     String FABRIC_SOURCE_SET = "fabric";
 }

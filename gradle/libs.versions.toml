@@ -1,0 +1,11 @@
+[versions]
+diffpatch = "2.0.7"
+mcd = "4.0-SNAPSHOT"
+
+[libraries]
+diffpatch = { module = "net.minecraftforge:DiffPatch", version.ref = "diffpatch" }
+mcd-api = { module = "cn.maxpixel.minecraft-decompiler:api", version.ref = "mcd" }
+mcd-parchment = { module = "cn.maxpixel.mcd-extensions:parchment", version.ref = "mcd" }
+
+[bundles]
+mcd = ["mcd-api", "mcd-parchment"]

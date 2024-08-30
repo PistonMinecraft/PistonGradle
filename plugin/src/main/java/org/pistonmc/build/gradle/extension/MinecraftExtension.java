@@ -22,7 +22,9 @@ public interface MinecraftExtension {
 
     MappingConfig official();
 
-//    MappingConfig parchment();
+    MappingConfig parchment(String version);
+
+    MappingConfig yarn(String version);
 
     ModdingToolchainSpec getToolchains();
 

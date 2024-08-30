@@ -1,0 +1,17 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.pistonmc.build'
+version = '0.1-SNAPSHOT'
+
+java {
+    withSourcesJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+dependencies {
+    implementation gradleApi()
+}

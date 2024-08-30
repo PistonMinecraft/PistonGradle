@@ -1,6 +1,6 @@
 package org.pistonmc.build.gradle.extension.impl;
 
-import cn.maxpixel.mcdecompiler.mapping.type.MappingTypes;
+import cn.maxpixel.mcdecompiler.mapping.format.MappingFormats;
 import org.gradle.api.Action;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFile;
@@ -55,15 +55,27 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     public MappingConfig official() {
         var m = getObjects().newInstance(MappingConfig.class);
         m.getMappingName().set(getVersion().map(v -> "official_" + v));// used by forge
-        m.getType().set(MappingTypes.PROGUARD);
+        m.getType().set(MappingFormats.PROGUARD);
         m.getMappings().set(getLayout().file(getVersion().map(vmc::getClientMappingsFile)));
         return m;
     }
 
-//    @Override
-//    public MappingConfig parchment() {
-//        return null;
-//    }
+    public MappingConfig yarn(String version) {
+        var m = getObjects().newInstance(MappingConfig.class);
+        m.getMappingName().set(getVersion().map(v -> "official_" + v));// used by forge
+        m.getType().set(MappingFormats.PROGUARD);
+        m.getMappings().set(getLayout().file(getVersion().map(vmc::getClientMappingsFile)));
+        return m;
+    }
+
+    @Override
+    public MappingConfig parchment(String version) {
+        var m = getObjects().newInstance(MappingConfig.class);
+        m.getMappingName().set(getVersion().map(v -> "official_" + v));// used by forge
+        m.getType().set(MappingFormats.PROGUARD);
+        m.getMappings().set(getLayout().file(getVersion().map(vmc::getClientMappingsFile)));
+        return m;
+    }
 
     @Override
     public ModdingToolchainSpec getToolchains() {

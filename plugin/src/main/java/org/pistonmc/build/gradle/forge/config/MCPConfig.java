@@ -1,6 +1,6 @@
 package org.pistonmc.build.gradle.forge.config;
 
-import cn.maxpixel.mcdecompiler.util.Utils;
+import cn.maxpixel.mcdecompiler.common.util.Utils;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;

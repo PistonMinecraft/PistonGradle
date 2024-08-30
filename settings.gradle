@@ -1,23 +1,42 @@
 import org.gradle.api.initialization.resolve.RepositoriesMode
 
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.4.0'
+}
+
 enableFeaturePreview('TYPESAFE_PROJECT_ACCESSORS')
 
 rootProject.name = 'PistonGradle'
 
 include 'plugin'
+include 'settings-plugin'
 
 dependencyResolutionManagement {
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
     repositories {
+        String un = System.getenv("GHP_USERNAME") ?: System.getenv("GITHUB_ACTOR")
+        String pw = System.getenv("GHP_TOKEN") ?: System.getenv("GITHUB_TOKEN")
         maven {
             name = 'Minecraft Decompiler'
             url = 'https://maven.pkg.github.com/MaxPixelStudios/MinecraftDecompiler'
             credentials {
-                username = System.getenv("GHP_USERNAME")
-                password = System.getenv("GHP_TOKEN")
+                username = un
+                password = pw
             }
             content {
-                includeModule('cn.maxpixel', 'minecraft-decompiler')
+                includeGroup('cn.maxpixel.minecraft-decompiler')
+                includeGroup('cn.maxpixel.mcd-extensions')
+            }
+        }
+        maven {
+            name = 'REWH'
+            url = 'https://maven.pkg.github.com/MaxPixelStudios/ReinventedWheels'
+            credentials {
+                username = un
+                password = pw
+            }
+            content {
+                includeGroupAndSubgroups('cn.maxpixel.rewh')
             }
         }
         mavenCentral()

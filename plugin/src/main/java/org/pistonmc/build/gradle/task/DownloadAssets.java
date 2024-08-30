@@ -1,7 +1,7 @@
 package org.pistonmc.build.gradle.task;
 
-import cn.maxpixel.mcdecompiler.util.FileUtil;
-import cn.maxpixel.mcdecompiler.util.Utils;
+import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
+import cn.maxpixel.mcdecompiler.common.util.Utils;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.FileCollection;
@@ -90,8 +90,8 @@ public abstract class DownloadAssets extends DefaultTask {
             try {
                 var request = HttpRequest.newBuilder(new URI(getUrl(hash))).build();
                 LOGGER.info("Downloading asset {} to {}...", name, path);
-                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.ensureFileExist(path),
-                        StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+                PistonGradlePlugin.CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(FileUtil.makeParentDirs(path),
+                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
                 LOGGER.info("Downloaded asset {}", name);
             } catch (IOException | InterruptedException | URISyntaxException e) {
                 throw Utils.wrapInRuntime(e);

@@ -1,7 +1,7 @@
 package org.pistonmc.build.gradle.util;
 
-import cn.maxpixel.mcdecompiler.util.JarUtil;
-import cn.maxpixel.mcdecompiler.util.Utils;
+import cn.maxpixel.mcdecompiler.common.app.util.JarUtil;
+import cn.maxpixel.mcdecompiler.common.util.Utils;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.jetbrains.annotations.NotNull;
@@ -13,8 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
-import static cn.maxpixel.mcdecompiler.util.FileUtil.*;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static cn.maxpixel.mcdecompiler.common.app.util.FileUtil.*;
 
 public class FileUtil {
     private static final Logger LOGGER = Logging.getLogger(FileUtil.class);
@@ -38,7 +37,7 @@ public class FileUtil {
             sourceStream.forEach(path -> {
                 Path relative = p.relativize(path);
                 try (InputStream in = Files.newInputStream(path);
-                    OutputStream out = Files.newOutputStream(ensureFileExist(dest.resolve(relative.toString())), TRUNCATE_EXISTING)) {
+                    OutputStream out = Files.newOutputStream(makeParentDirs(dest.resolve(relative.toString())))) {
                     in.transferTo(out);
                 } catch (IOException e) {
                     LOGGER.warn("Error coping file \"{}\"", path, e);
