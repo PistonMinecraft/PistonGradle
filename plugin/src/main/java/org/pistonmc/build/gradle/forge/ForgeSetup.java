@@ -2,12 +2,13 @@ package org.pistonmc.build.gradle.forge;
 
 import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
 import cn.maxpixel.mcdecompiler.common.app.util.JarUtil;
-import cn.maxpixel.mcdecompiler.common.util.LambdaUtil;
+import cn.maxpixel.mcdecompiler.utils.LambdaUtil;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.file.RegularFileProperty;
@@ -89,13 +90,11 @@ public class ForgeSetup {
         var configurations = project.getConfigurations();
         this.forgeSetup = configurations.register(ForgeConstants.SETUP_CONFIGURATION, config -> {
             config.setDescription("Used when setting up Forge workspace");
-            config.setVisible(false);
             config.setCanBeConsumed(false);
             config.setTransitive(false);
         });
         this.forgeMc = configurations.register(ForgeConstants.MC_CONFIGURATION, config -> {
             config.setDescription("Marks all dependencies from Forged MC");
-            config.setVisible(false);
             config.setCanBeConsumed(false);
             config.setTransitive(false);
         });
@@ -128,8 +127,8 @@ public class ForgeSetup {
             task.getCache().set(vmc);
             task.getForgeSetup().set(forgeSetup);
             task.getBaseDirectory().set(setupBaseDir.map(dir -> dir.dir("mcp")));
-            task.getAccessTransformerJar().from(forgeSetup.map(c -> c.fileCollection(atJar)));
-            task.getSideAnnotationStripperJar().from(forgeSetup.map(c -> c.fileCollection(sasJar)));
+            task.getAccessTransformerJar().from(forgeSetup.map(c -> DependencyUtil.fileCollection(c, atJar)));
+            task.getSideAnnotationStripperJar().from(forgeSetup.map(c -> DependencyUtil.fileCollection(c, sasJar)));
         });
         this.genPatched = tasks.register("genForgePatched", PatchTask.class, task -> {
             task.setGroup(ForgeConstants.TASK_GROUP);
@@ -194,7 +193,7 @@ public class ForgeSetup {
         var forgeSetup = this.forgeSetup.get();
         var forgeSourceSet = this.sourceSet.get();
         var userDevJar = this.userDevJar.get();
-        var userDevConfig = UserDevConfig.load(forgeSetup.copy().fileCollection(dep -> Utils.hashEquals(dep, userDevJar)),
+        var userDevConfig = UserDevConfig.load(DependencyUtil.fileCollection(forgeSetup.copy(), userDevJar),
                 extractBaseDir.get(), forgeSetup, dependencies);
         forgeMc.configure(c -> {
             c.extendsFrom(mcVanillaConfig.get());
@@ -219,7 +218,7 @@ public class ForgeSetup {
             task.getPatchDir().set(userDevConfig.patches.toFile());
             task.getOriginalPrefix().set(userDevConfig.patchesOriginalPrefix);
             task.getModifiedPrefix().set(userDevConfig.patchesModifiedPrefix);
-            task.getSourcesJar().set(forgeSetup.fileCollection(dep -> DependencyUtil.groupAndNameEquals(dep, userDevConfig.sources)).filter(f -> f.getPath().contains("-sources")));// FIXME: WTF
+            task.getSourcesJar().set(DependencyUtil.fileCollection(forgeSetup, DependencyUtil.filterWithoutVersion(userDevConfig.sources)).filter(f -> f.getPath().contains("-sources")));// FIXME: WTF
         });
         genSources.configure(task -> {
             task.getEncoding().set(userDevConfig.sourceFileCharset);
@@ -230,7 +229,7 @@ public class ForgeSetup {
             task.setClasspath(forgeMc.get());
             task.getJavaCompiler().set(toolchains.compilerFor(spec -> spec.getLanguageVersion().set(userDevConfig.mcp.javaTarget)));
             task.doLast("copyResources", t -> {
-                var universal = forgeSetup.fileCollection(dep -> DependencyUtil.groupAndNameEquals(dep, userDevConfig.universal)).filter(f -> f.getPath().contains("-universal")).getSingleFile();// FIXME: WTF
+                var universal = DependencyUtil.fileCollection(forgeSetup, DependencyUtil.filterWithoutVersion(userDevConfig.universal)).filter(f -> f.getPath().contains("-universal")).getSingleFile();// FIXME: WTF
                 try (var fs = JarUtil.createZipFs(universal.toPath());
                      var files = FileUtil.iterateFiles(fs.getPath(""))) {
                     files.filter(p -> {

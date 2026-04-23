@@ -1,6 +1,6 @@
 package org.pistonmc.build.gradle.forge.config;
 
-import cn.maxpixel.mcdecompiler.common.util.Utils;
+import cn.maxpixel.mcdecompiler.utils.Utils;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.DependencySet;
@@ -9,6 +9,7 @@ import org.gradle.api.file.FileCollection;
 import org.pistonmc.build.gradle.PistonGradlePlugin;
 import org.pistonmc.build.gradle.forge.ForgeConstants;
 import org.pistonmc.build.gradle.forge.config.raw.UserDevConfigRaw;
+import org.pistonmc.build.gradle.util.DependencyUtil;
 import org.pistonmc.build.gradle.util.FileUtil;
 
 import java.io.IOException;
@@ -71,7 +72,7 @@ public class UserDevConfig extends Config {
             var raw = PistonGradlePlugin.GSON.fromJson(isr, UserDevConfigRaw.class);
             var mcpDep = dependencies.create(raw.mcp);
             deps.add(mcpDep);
-            var mcp = MCPConfig.load(forgeSetup.copy().fileCollection(dep -> hashEquals(dep, mcpDep)), extractBaseDir, forgeSetup, dependencies);
+            var mcp = MCPConfig.load(DependencyUtil.fileCollection(forgeSetup.copy(), mcpDep), extractBaseDir, forgeSetup, dependencies);
             List<Path> ats = nonNull(raw.ats).stream().map(extract::resolve).toList();
             List<Path> sass = nonNull(raw.sass).stream().map(extract::resolve).toList();
             var sources = dependencies.create(raw.sources);

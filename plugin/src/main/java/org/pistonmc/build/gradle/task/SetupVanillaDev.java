@@ -35,7 +35,7 @@ public abstract class SetupVanillaDev extends DefaultTask {
                 new MinecraftDecompiler.OptionBuilder(getInputJar().get().getAsFile().toPath())
                         .withMapping(config.getType().get().read(new FileReader(config.getMappings().get().getAsFile(), StandardCharsets.UTF_8)))
                         .output(getOutputJar().get().getAsFile().toPath())
-                        .targetNamespace(config.getMappedNamespace().getOrElse("unknown"))
+                        .namespaceTarget(config.getMappedNamespace().getOrElse("unknown"))
                         .build());
         mcd.deobfuscate();
     }

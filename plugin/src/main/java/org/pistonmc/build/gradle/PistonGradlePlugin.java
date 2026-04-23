@@ -93,13 +93,11 @@ public class PistonGradlePlugin implements Plugin<Project> {
         var configurations = project.getConfigurations();
         this.vanillaMcConfiguration = configurations.register(Constants.VANILLA_MC_CONFIGURATION, config -> {
             config.setDescription("Marks all dependencies from vanilla MC");
-            config.setVisible(false);
             config.setTransitive(false);
             config.setCanBeConsumed(false);
         });
         this.mappingsConfiguration = configurations.register(Constants.MAPPINGS_CONFIGURATION, config -> {
             config.setDescription("Used to resolve obfuscation mapping dependencies");
-            config.setVisible(false);
             config.setTransitive(false);
             config.setCanBeConsumed(false);
         });

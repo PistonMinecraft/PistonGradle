@@ -1,7 +1,7 @@
 package org.pistonmc.build.gradle.cache;
 
 import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
-import cn.maxpixel.mcdecompiler.common.util.Utils;
+import cn.maxpixel.mcdecompiler.utils.Utils;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;

@@ -1,10 +1,11 @@
 package org.pistonmc.build.gradle.forge.task;
 
+import cn.maxpixel.mcdecompiler.common.app.util.AppUtils;
 import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
 import cn.maxpixel.mcdecompiler.common.app.util.JarUtil;
-import cn.maxpixel.mcdecompiler.common.util.LambdaUtil;
-import cn.maxpixel.mcdecompiler.common.util.NamingUtil;
 import cn.maxpixel.mcdecompiler.mapping.format.MappingFormats;
+import cn.maxpixel.mcdecompiler.mapping.util.NamingUtil;
+import cn.maxpixel.mcdecompiler.utils.LambdaUtil;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
@@ -45,7 +46,7 @@ public abstract class GenExtras extends DefaultTask {
              var output = JarUtil.createZipFs(getOutputJar().get().getAsFile().toPath(), true);
              var client = FileUtil.iterateFiles(clientFs.getPath(""))) {
             var names = mappings.classes.stream().map(cm -> cm.mapping.getUnmappedName()).collect(Collectors.toSet());
-            client.filter(p -> !names.contains(NamingUtil.file2Native(p.toString()))).forEach(LambdaUtil.unwrapConsumer(p -> {
+            client.filter(p -> !names.contains(AppUtils.file2Native(p.toString()))).forEach(LambdaUtil.unwrapConsumer(p -> {
                 String path = p.toString();
                 Path outputPath = output.getPath(path);
                 try (var is = Files.newInputStream(p);

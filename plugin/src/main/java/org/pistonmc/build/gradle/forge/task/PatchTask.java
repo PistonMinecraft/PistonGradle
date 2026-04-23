@@ -2,7 +2,7 @@ package org.pistonmc.build.gradle.forge.task;
 
 import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
 import cn.maxpixel.mcdecompiler.common.app.util.JarUtil;
-import cn.maxpixel.mcdecompiler.common.util.LambdaUtil;
+import cn.maxpixel.mcdecompiler.utils.LambdaUtil;
 import codechicken.diffpatch.cli.CliOperation;
 import codechicken.diffpatch.cli.PatchOperation;
 import codechicken.diffpatch.util.LoggingOutputStream;

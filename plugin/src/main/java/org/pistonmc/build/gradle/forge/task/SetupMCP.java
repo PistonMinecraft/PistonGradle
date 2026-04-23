@@ -2,8 +2,8 @@ package org.pistonmc.build.gradle.forge.task;
 
 import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
 import cn.maxpixel.mcdecompiler.common.app.util.JarUtil;
-import cn.maxpixel.mcdecompiler.common.util.LambdaUtil;
-import cn.maxpixel.mcdecompiler.common.util.Utils;
+import cn.maxpixel.mcdecompiler.utils.LambdaUtil;
+import cn.maxpixel.mcdecompiler.utils.Utils;
 import codechicken.diffpatch.cli.CliOperation;
 import codechicken.diffpatch.cli.PatchOperation;
 import codechicken.diffpatch.util.LoggingOutputStream;
@@ -23,13 +23,16 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.*;
 import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.process.ExecOperations;
 import org.pistonmc.build.gradle.cache.VanillaMinecraftCache;
 import org.pistonmc.build.gradle.forge.config.MCPConfig;
 import org.pistonmc.build.gradle.forge.config.Side;
 import org.pistonmc.build.gradle.forge.config.UserDevConfig;
+import org.pistonmc.build.gradle.util.DependencyUtil;
 import org.pistonmc.build.gradle.util.DigestUtil;
 import org.pistonmc.build.gradle.util.VariableUtil;
 
+import javax.inject.Inject;
 import java.io.*;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -79,6 +82,9 @@ public abstract class SetupMCP extends DefaultTask {
     public abstract Property<Side> getSide();
     @InputFiles
     public abstract ListProperty<RegularFile> getAccessTransformers();
+
+    @Inject
+    public abstract ExecOperations getExec();
 
     public SetupMCP() {
         getCache().disallowUnsafeRead();
@@ -158,9 +164,9 @@ public abstract class SetupMCP extends DefaultTask {
                 var logFile = workingDir.file("console.log").getAsFile();
                 logFile.createNewFile();
                 try (var os = new FileOutputStream(logFile)) {
-                    getProject().javaexec(spec -> {
+                    getExec().javaexec(spec -> {
                         PrintStream ps = new PrintStream(os);
-                        spec.setClasspath(forgeSetup.fileCollection(dep -> groupAndNameEquals(dep, func.jar())))
+                        spec.setClasspath(DependencyUtil.fileCollection(forgeSetup, DependencyUtil.filterWithoutVersion(func.jar())))
                                 .setArgs(VariableUtil.replaceVariables(func.args(), inputs, false))
                                 .setStandardOutput(ps)
                                 .setErrorOutput(ps)
@@ -190,7 +196,7 @@ public abstract class SetupMCP extends DefaultTask {
         var logFile = workingDir.resolve("console.log");
         String output = workingDir.resolve("output.jar").toString();
         try (var os = Files.newOutputStream(logFile, StandardOpenOption.CREATE)) {
-            getProject().javaexec(spec -> {
+            getExec().javaexec(spec -> {
                 spec.classpath(getAccessTransformerJar())
                         .setArgs(List.of("--inJar", inputs.get("input"), "--outJar", output))
                         .setStandardOutput(os)
@@ -216,7 +222,7 @@ public abstract class SetupMCP extends DefaultTask {
         var logFile = workingDir.resolve("console.log");
         String output = workingDir.resolve("output.jar").toString();
         try (var os = Files.newOutputStream(logFile, StandardOpenOption.CREATE)) {
-            getProject().javaexec(spec -> {
+            getExec().javaexec(spec -> {
                 spec.classpath(getSideAnnotationStripperJar())
                         .setArgs(List.of("--strip", "--input", inputs.get("input"), "--output", output))
                         .setStandardOutput(os)

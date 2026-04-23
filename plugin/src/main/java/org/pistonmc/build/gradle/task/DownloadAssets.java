@@ -1,7 +1,7 @@
 package org.pistonmc.build.gradle.task;
 
 import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
-import cn.maxpixel.mcdecompiler.common.util.Utils;
+import cn.maxpixel.mcdecompiler.utils.Utils;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.FileCollection;

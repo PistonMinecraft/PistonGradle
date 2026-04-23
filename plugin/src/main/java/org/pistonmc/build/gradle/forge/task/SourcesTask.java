@@ -2,7 +2,6 @@ package org.pistonmc.build.gradle.forge.task;
 
 import cn.maxpixel.mcdecompiler.common.app.util.FileUtil;
 import cn.maxpixel.mcdecompiler.common.app.util.JarUtil;
-import cn.maxpixel.mcdecompiler.common.util.LambdaUtil;
 import cn.maxpixel.mcdecompiler.mapping.Mapping;
 import cn.maxpixel.mcdecompiler.mapping.NamespacedMapping;
 import cn.maxpixel.mcdecompiler.mapping.PairedMapping;
@@ -13,7 +12,8 @@ import cn.maxpixel.mcdecompiler.mapping.component.Descriptor;
 import cn.maxpixel.mcdecompiler.mapping.format.MappingFormats;
 import cn.maxpixel.mcdecompiler.mapping.remapper.ClassifiedMappingRemapper;
 import cn.maxpixel.mcdecompiler.mapping.trait.NamespacedTrait;
-import cn.maxpixel.mcdecompiler.mapping.util.MappingUtil;
+import cn.maxpixel.mcdecompiler.mapping.util.MappingUtils;
+import cn.maxpixel.mcdecompiler.utils.LambdaUtil;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFile;
@@ -143,20 +143,21 @@ public abstract class SourcesTask extends DefaultTask {
     private UniqueMapping<PairedMapping> loadMappings(Object2ObjectOpenHashMap<String, ? extends ClassMapping<? extends Mapping>> obf2srg) throws IOException {
         var config = getMappings();
         ClassifiedMapping<?> mappings = config.getType().get().read(new FileReader(getMappings().getMappings().get().getAsFile(), StandardCharsets.UTF_8));
-        ClassifiedMappingRemapper remapper;
         if (mappings.hasTrait(NamespacedTrait.class)) {
-            var actualObf = mappings.getSourceNamespace();
+            var namespaced = mappings.getTrait(NamespacedTrait.class);
+            var actualObf = mappings.getFirstNamespace();
             var mapped = config.getMappedNamespace().get();
             if (actualObf.equals(mapped)) throw new IllegalArgumentException("Obf and mapped namespaces are the same");
             if (config.getObfNamespace().isPresent()) {
                 var configObf = config.getObfNamespace().get();
                 if (configObf.equals(mapped)) throw new IllegalArgumentException("Obf and mapped namespaces are the same");
-                if (!configObf.equals(actualObf)) {
-                    mappings.swap(actualObf, configObf);
-                }
+                namespaced.setUnmappedNamespace(configObf);
             }
-            remapper = new ClassifiedMappingRemapper((ClassifiedMapping<NamespacedMapping>) mappings, actualObf, mapped);
-        } else remapper = new ClassifiedMappingRemapper((ClassifiedMapping<PairedMapping>) mappings);
+            namespaced.setMappedNamespace(mapped);
+            namespaced.setFallbackNamespace(actualObf);
+            mappings.updateCollection();
+        }
+        ClassifiedMappingRemapper remapper = new ClassifiedMappingRemapper(mappings);
 
         ClassifiedMapping<PairedMapping> output = new ClassifiedMapping<>();// FIXME: badly organized code
         obf2srg.values().forEach(cm -> {
@@ -166,13 +167,13 @@ public abstract class SourcesTask extends DefaultTask {
                 for (var field : cm.getFields()) {
                     String mappedField = remapper.mapField(cm.mapping.getUnmappedName(), field.getUnmappedName());
                     if (mappedField != null) {
-                        ncm.addField(MappingUtil.Paired.o(field.getMappedName(), mappedField));
+                        ncm.addField(MappingUtils.Paired.o(field.getMappedName(), mappedField));
                     }
                 }
                 for (var method : cm.getMethods()) {
-                    String mappedMethod = remapper.mapMethod(cm.mapping.getUnmappedName(), method.getUnmappedName(), method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor);
+                    String mappedMethod = remapper.mapMethod(cm.mapping.getUnmappedName(), method.getUnmappedName(), method.getComponent(Descriptor.Namespaced.class).descriptor);
                     if (mappedMethod != null) {
-                        ncm.addMethod(MappingUtil.Paired.duo(method.getMappedName(), mappedMethod, remapper.mapMethodDesc(method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor)));
+                        ncm.addMethod(MappingUtils.Paired.duo(method.getMappedName(), mappedMethod, remapper.mapMethodDesc(method.getComponent(Descriptor.Namespaced.class).descriptor)));
                     }
                 }
                 output.classes.add(ncm);
@@ -201,7 +202,7 @@ public abstract class SourcesTask extends DefaultTask {
                     if ("<init>".equals(method.getUnmappedName()) || "<clinit>".equals(method.getUnmappedName())) {
                         continue;
                     }
-                    String mappedMethod = remapper.mapMethod(cm.mapping.getUnmappedName(), method.getUnmappedName(), method.getComponent(Descriptor.Namespaced.class).unmappedDescriptor);
+                    String mappedMethod = remapper.mapMethod(cm.mapping.getUnmappedName(), method.getUnmappedName(), method.getComponent(Descriptor.Namespaced.class).descriptor);
                     if (mappedMethod != null) {
                         ret.methods.add(new PairedMapping(method.getMappedName(), mappedMethod));
                     }

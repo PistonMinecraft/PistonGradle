@@ -5,6 +5,7 @@ import org.gradle.api.Project;
 import org.gradle.api.initialization.Settings;
 import org.gradle.api.plugins.ExtensionAware;
 import org.jetbrains.annotations.NotNull;
+import org.pistonmc.build.gradle.settings.api.EnvironmentMode;
 import org.pistonmc.build.gradle.settings.api.PistonGradleSettingsExtension;
 
 public class PistonGradleSettingsPlugin implements Plugin<ExtensionAware> {
@@ -12,6 +13,7 @@ public class PistonGradleSettingsPlugin implements Plugin<ExtensionAware> {
     public void apply(@NotNull ExtensionAware target) {
         var ext = target.getExtensions().create(PistonGradleSettingsExtension.EXTENSION_NAME, PistonGradleSettingsExtension.class);
         if (target instanceof Settings settings) {
+            ext.getEnvironmentMode().convention(EnvironmentMode.MULTIPLE);
             settings.getGradle().rootProject(rootProject -> {
                 rootProject.getPluginManager().apply(PistonGradleSettingsPlugin.class);
                 rootProject.getExtensions().getByType(PistonGradleSettingsExtension.class).from(ext);
