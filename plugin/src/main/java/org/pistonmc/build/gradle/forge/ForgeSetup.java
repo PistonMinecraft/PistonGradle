@@ -8,7 +8,6 @@ import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.file.RegularFileProperty;
@@ -218,7 +217,7 @@ public class ForgeSetup {
             task.getPatchDir().set(userDevConfig.patches.toFile());
             task.getOriginalPrefix().set(userDevConfig.patchesOriginalPrefix);
             task.getModifiedPrefix().set(userDevConfig.patchesModifiedPrefix);
-            task.getSourcesJar().set(DependencyUtil.fileCollection(forgeSetup, DependencyUtil.filterWithoutVersion(userDevConfig.sources)).filter(f -> f.getPath().contains("-sources")));// FIXME: WTF
+            task.getSourcesJar().set(DependencyUtil.fileCollection(forgeSetup, userDevConfig.sources).filter(f -> f.getPath().contains("-sources")));// FIXME: WTF
         });
         genSources.configure(task -> {
             task.getEncoding().set(userDevConfig.sourceFileCharset);
@@ -229,7 +228,7 @@ public class ForgeSetup {
             task.setClasspath(forgeMc.get());
             task.getJavaCompiler().set(toolchains.compilerFor(spec -> spec.getLanguageVersion().set(userDevConfig.mcp.javaTarget)));
             task.doLast("copyResources", t -> {
-                var universal = DependencyUtil.fileCollection(forgeSetup, DependencyUtil.filterWithoutVersion(userDevConfig.universal)).filter(f -> f.getPath().contains("-universal")).getSingleFile();// FIXME: WTF
+                var universal = DependencyUtil.fileCollection(forgeSetup, userDevConfig.universal).filter(f -> f.getPath().contains("-universal")).getSingleFile();// FIXME: WTF
                 try (var fs = JarUtil.createZipFs(universal.toPath());
                      var files = FileUtil.iterateFiles(fs.getPath(""))) {
                     files.filter(p -> {

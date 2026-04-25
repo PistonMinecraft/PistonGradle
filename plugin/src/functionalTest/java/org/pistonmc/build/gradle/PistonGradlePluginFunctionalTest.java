@@ -26,7 +26,11 @@ class PistonGradlePluginFunctionalTest {
     }
 
     @Test void canRunTask() throws IOException {
-        writeString(getSettingsFile(), "");
+        writeString(getSettingsFile(), """
+                plugins {
+//                    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+                }
+                """);
         writeString(getBuildFile(), """
                 plugins {
                   id 'org.pistonmc.build'
@@ -42,7 +46,7 @@ class PistonGradlePluginFunctionalTest {
                   toolchains {
                     vanilla()
                     forge {
-                      version = '47.1.28'
+                      version = '47.4.20'
                     }
                   }
                   runs {
@@ -58,7 +62,7 @@ class PistonGradlePluginFunctionalTest {
         GradleRunner runner = GradleRunner.create();
         runner.forwardOutput();
         runner.withPluginClasspath();
-        runner.withArguments(/*"dependencies", */Constants.SETUP_DEV_ENV_TASK, "--stacktrace", "--info");
+        runner.withArguments(/*"dependencies", */"-Dorg.gradle.jvmargs=-Xmx4G", Constants.SETUP_DEV_ENV_TASK, "--stacktrace", "--info");
         runner.withProjectDir(projectDir);
         BuildResult result = runner.build();
 

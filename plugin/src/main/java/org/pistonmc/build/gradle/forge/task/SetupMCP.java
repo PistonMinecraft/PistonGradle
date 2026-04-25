@@ -55,7 +55,6 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
-import static org.pistonmc.build.gradle.util.DependencyUtil.groupAndNameEquals;
 import static org.pistonmc.build.gradle.util.FileUtil.extractZipTo;
 
 /**
@@ -166,7 +165,7 @@ public abstract class SetupMCP extends DefaultTask {
                 try (var os = new FileOutputStream(logFile)) {
                     getExec().javaexec(spec -> {
                         PrintStream ps = new PrintStream(os);
-                        spec.setClasspath(DependencyUtil.fileCollection(forgeSetup, DependencyUtil.filterWithoutVersion(func.jar())))
+                        spec.setClasspath(DependencyUtil.fileCollection(forgeSetup, func.jar()))
                                 .setArgs(VariableUtil.replaceVariables(func.args(), inputs, false))
                                 .setStandardOutput(ps)
                                 .setErrorOutput(ps)
@@ -196,6 +195,7 @@ public abstract class SetupMCP extends DefaultTask {
         var logFile = workingDir.resolve("console.log");
         String output = workingDir.resolve("output.jar").toString();
         try (var os = Files.newOutputStream(logFile, StandardOpenOption.CREATE)) {
+            getLogger().debug("AT Jar: {}", getAccessTransformerJar().getFiles());
             getExec().javaexec(spec -> {
                 spec.classpath(getAccessTransformerJar())
                         .setArgs(List.of("--inJar", inputs.get("input"), "--outJar", output))
@@ -222,6 +222,7 @@ public abstract class SetupMCP extends DefaultTask {
         var logFile = workingDir.resolve("console.log");
         String output = workingDir.resolve("output.jar").toString();
         try (var os = Files.newOutputStream(logFile, StandardOpenOption.CREATE)) {
+            getLogger().debug("SAS Jar: {}", getAccessTransformerJar().getFiles());
             getExec().javaexec(spec -> {
                 spec.classpath(getSideAnnotationStripperJar())
                         .setArgs(List.of("--strip", "--input", inputs.get("input"), "--output", output))
