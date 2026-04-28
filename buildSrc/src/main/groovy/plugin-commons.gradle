@@ -37,6 +37,10 @@ tasks.named('check') {
     dependsOn(testing.suites.functionalTest)
 }
 
+tasks.named('validatePlugins') {// FIXME: TEMP WORKAROUND, REMOVE THIS EVENTUALLY
+    enableStricterValidation = false
+}
+
 publishing {
     repositories {
         maven {

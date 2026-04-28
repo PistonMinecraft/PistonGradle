@@ -50,7 +50,7 @@ public abstract class RunConfigImpl implements RunConfig {
             task.getJvmArguments().addAll(getAllJvmArguments().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin)));
             task.getJvmArguments().addAll(getAllConditionalJvmArguments().zip(variables, (args, v) -> {
                 var ret = new ObjectArrayList<String>();
-                for (Argument.Conditional arg : args) {
+                for (Argument.Complex arg : args) {
                     if (arg.rules().stream().allMatch(Rule::isAllow)) {
                         VariableUtil.replaceVariables(arg.value(), v, ret, dollarBegin);
                     }
@@ -60,7 +60,7 @@ public abstract class RunConfigImpl implements RunConfig {
             task.getArgumentProviders().add(getAllGameArguments().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin))::get);
             task.getArgumentProviders().add(getAllConditionalGameArguments().zip(variables, (args, v) -> {
                 var ret = new ObjectArrayList<String>();
-                args: for (Argument.Conditional arg : args) {
+                args: for (Argument.Complex arg : args) {
                     for (Rule rule : arg.rules()) {
                         if (!rule.isAllow(clientConfig)) continue args;
                     }
@@ -98,9 +98,9 @@ public abstract class RunConfigImpl implements RunConfig {
     }
 
     @Override
-    public Provider<List<Argument.Conditional>> getAllConditionalJvmArguments() {
+    public Provider<List<Argument.Complex>> getAllConditionalJvmArguments() {
         return getParents().flatMap(configs -> {
-            var merged = getObjects().listProperty(Argument.Conditional.class);
+            var merged = getObjects().listProperty(Argument.Complex.class);
             for (RunConfig config : configs) {
                 merged.addAll(config.getAllConditionalJvmArguments());
             }
@@ -122,9 +122,9 @@ public abstract class RunConfigImpl implements RunConfig {
     }
 
     @Override
-    public Provider<List<Argument.Conditional>> getAllConditionalGameArguments() {
+    public Provider<List<Argument.Complex>> getAllConditionalGameArguments() {
         return getParents().flatMap(configs -> {
-            var merged = getObjects().listProperty(Argument.Conditional.class);
+            var merged = getObjects().listProperty(Argument.Complex.class);
             for (RunConfig config : configs) {
                 merged.addAll(config.getAllConditionalGameArguments());
             }

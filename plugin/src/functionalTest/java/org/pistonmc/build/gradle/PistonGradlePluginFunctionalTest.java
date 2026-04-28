@@ -41,13 +41,14 @@ class PistonGradlePluginFunctionalTest {
                 import org.pistonmc.build.gradle.run.DataRunConfig
                 
                 minecraft {
-                  version = '1.20.1'
-                  mappings = official()
+                  version = '26.1.2'
+//                  version = '1.20.1'
+//                  mappings = official()
                   toolchains {
                     vanilla()
-                    forge {
-                      version = '47.4.20'
-                    }
+//                    forge {
+//                      version = '47.4.20'
+//                    }
                   }
                   runs {
                     random

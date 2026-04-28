@@ -80,6 +80,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
         project.getRepositories().mavenCentral(repo -> repo.content(d -> {
             d.excludeGroupAndSubgroups("net.minecraft");
             d.excludeGroupAndSubgroups("net.minecraftforge");
+            d.excludeGroupAndSubgroups("net.neoforge");
             d.excludeGroupAndSubgroups("net.fabricmc");
             d.excludeGroupAndSubgroups("com.mojang");
         }));
@@ -148,12 +149,7 @@ public class PistonGradlePlugin implements Plugin<Project> {
         var vanillaPresent = vanilla.getEnabled().get();
         var forgePresent = toolchains.getForgeConfig().getEnabled().get();
         var fabricPresent = fabric.getEnabled().get();
-        var vanillaDependencyNotation = Map.of(
-                "group", "net.minecraft",
-                "name", "vanilla",
-                "version", version,
-                "classifier", "client"
-        );
+        var vanillaDependencyNotation = "net.minecraft:client:" + version;
         var tasks = project.getTasks();
         var dependencies = project.getDependencies();
         var configurations = project.getConfigurations();
@@ -233,16 +229,16 @@ public class PistonGradlePlugin implements Plugin<Project> {
                     .map(Argument.Simple.class::cast)
                     .map(Argument.Simple::value)
                     .forEach(config.getGameArguments()::add);
-            game.stream().filter(Argument.Conditional.class::isInstance)
-                    .map(Argument.Conditional.class::cast)
+            game.stream().filter(Argument.Complex.class::isInstance)
+                    .map(Argument.Complex.class::cast)
                     .forEach(config.getConditionalGameArguments()::add);
             var jvm = arguments.get("jvm");
             jvm.stream().filter(Argument.Simple.class::isInstance)
                     .map(Argument.Simple.class::cast)
                     .map(Argument.Simple::value)
                     .forEach(config.getJvmArguments()::add);
-            jvm.stream().filter(Argument.Conditional.class::isInstance)
-                    .map(Argument.Conditional.class::cast)
+            jvm.stream().filter(Argument.Complex.class::isInstance)
+                    .map(Argument.Complex.class::cast)
                     .forEach(config.getConditionalJvmArguments()::add);
         }
         var minecraftArguments = versionJson.minecraftArguments();

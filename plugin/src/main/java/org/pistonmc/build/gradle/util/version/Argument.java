@@ -17,7 +17,7 @@ import java.util.Objects;
 public interface Argument {
     record Simple(String value) implements Argument {}
 
-    record Conditional(List<Rule> rules, List<String> value) implements Argument {}
+    record Complex(List<Rule> rules, List<String> value) implements Argument {}
 
     class Adapter extends TypeAdapter<Argument> {
         @Override
@@ -31,7 +31,7 @@ public interface Argument {
             if (token == JsonToken.STRING) return new Simple(in.nextString());
             else if (token == JsonToken.BEGIN_OBJECT) {
                 in.beginObject();
-                List<Rule> rules = null;
+                List<Rule> rules = List.of();// Observed in 26.1: there could be no rules, so init with an empty list
                 List<String> value = null;
                 while (in.peek() != JsonToken.END_OBJECT) switch (in.nextName()) {
                     case "rules" -> rules = PistonGradlePlugin.GSON.fromJson(in, new TypeToken<>() {});
@@ -41,7 +41,7 @@ public interface Argument {
                     }
                 }
                 in.endObject();
-                return new Conditional(Objects.requireNonNull(rules), Objects.requireNonNull(value));
+                return new Complex(Objects.requireNonNull(rules), Objects.requireNonNull(value));
             } else throw new IOException("Invalid argument");
         }
     }

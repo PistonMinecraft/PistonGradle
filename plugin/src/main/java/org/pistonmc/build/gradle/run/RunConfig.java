@@ -19,11 +19,11 @@ public interface RunConfig extends Named {
 
     ListProperty<String> getJvmArguments();
 
-    ListProperty<Argument.Conditional> getConditionalJvmArguments();
+    ListProperty<Argument.Complex> getConditionalJvmArguments();
 
     ListProperty<String> getGameArguments();
 
-    ListProperty<Argument.Conditional> getConditionalGameArguments();
+    ListProperty<Argument.Complex> getConditionalGameArguments();
 
     MapProperty<String, String> getProperties();
 
@@ -48,11 +48,11 @@ public interface RunConfig extends Named {
 
     Provider<List<String>> getAllJvmArguments();
 
-    Provider<List<Argument.Conditional>> getAllConditionalJvmArguments();
+    Provider<List<Argument.Complex>> getAllConditionalJvmArguments();
 
     Provider<List<String>> getAllGameArguments();
 
-    Provider<List<Argument.Conditional>> getAllConditionalGameArguments();
+    Provider<List<Argument.Complex>> getAllConditionalGameArguments();
 
     Provider<Map<String, String>> getAllProperties();
 

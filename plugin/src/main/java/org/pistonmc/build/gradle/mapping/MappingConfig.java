@@ -21,6 +21,7 @@ public interface MappingConfig {
     Property<MappingFormat.Classified<?>> getType();
 
     @InputFile
+    @Optional
     RegularFileProperty getMappings();
 
     /**

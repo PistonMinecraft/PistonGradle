@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.provider.Provider;
+import org.jetbrains.annotations.Nullable;
 import org.pistonmc.build.gradle.Constants;
 import org.pistonmc.build.gradle.PistonGradlePlugin;
 import org.pistonmc.build.gradle.util.AssetIndex;
@@ -129,12 +130,20 @@ public class VanillaMinecraftCache {
         return getDownload(id, "server", "server.jar", "server jar");
     }
 
-    public Path getClientMappings(String id) {
-        return getDownload(id, "client_mappings", "client.txt", "client mappings");
+    public @Nullable Path getClientMappings(String id) {
+        return hasClientMappings(id) ? getDownload(id, "client_mappings", "client.txt", "client mappings") : null;
     }
 
-    public Path getServerMappings(String id) {
-        return getDownload(id, "server_mappings", "server.txt", "server mappings");
+    public boolean hasClientMappings(String id) {
+        return getVersionJson(id).downloads().containsKey("client_mappings");
+    }
+
+    public @Nullable Path getServerMappings(String id) {
+        return hasServerMappings(id) ? getDownload(id, "server_mappings", "server.txt", "server mappings") : null;
+    }
+
+    public boolean hasServerMappings(String id) {
+        return getVersionJson(id).downloads().containsKey("server_mappings");
     }
 
     public File getClientJarFile(String id) {
@@ -145,12 +154,14 @@ public class VanillaMinecraftCache {
         return getServerJar(id).toFile();
     }
 
-    public File getClientMappingsFile(String id) {
-        return getClientMappings(id).toFile();
+    public @Nullable File getClientMappingsFile(String id) {
+        var path = getClientMappings(id);
+        return path != null ? path.toFile() : null;
     }
 
-    public File getServerMappingsFile(String id) {
-        return getServerMappings(id).toFile();
+    public @Nullable File getServerMappingsFile(String id) {
+        var path = getServerMappings(id);
+        return path != null ? path.toFile() : null;
     }
 
     public String getLoggingConfig(VersionJson.LoggingConfig.File file) {
