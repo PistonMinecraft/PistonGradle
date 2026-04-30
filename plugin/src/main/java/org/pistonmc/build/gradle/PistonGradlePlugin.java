@@ -39,7 +39,6 @@ import org.pistonmc.build.gradle.util.version.VersionManifest;
 import java.net.http.HttpClient;
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
 
 public class PistonGradlePlugin implements Plugin<Project> {
     public static final HttpClient CLIENT = HttpClient.newHttpClient();

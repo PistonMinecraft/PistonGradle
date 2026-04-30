@@ -21,7 +21,7 @@ import java.util.Map;
 
 public abstract class RunConfigImpl implements RunConfig {
     private final String name;
-    private final TaskProvider<JavaExec> runTask;
+    private transient final TaskProvider<JavaExec> runTask;
 
     @Inject
     protected abstract ProjectLayout getLayout();
@@ -47,8 +47,18 @@ public abstract class RunConfigImpl implements RunConfig {
             var clientConfig = this instanceof ClientRunConfig c ? c : null;
             var variables = getAllVariables();
             boolean dollarBegin = getVariableDollarBegin().get();
-            task.getJvmArguments().addAll(getAllJvmArguments().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin)));
-            task.getJvmArguments().addAll(getAllConditionalJvmArguments().zip(variables, (args, v) -> {
+//            task.getJvmArguments().addAll(getAllJvmArguments().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin)));
+//            task.getJvmArguments().addAll(getAllConditionalJvmArguments().zip(variables, (args, v) -> {
+//                var ret = new ObjectArrayList<String>();
+//                for (Argument.Complex arg : args) {
+//                    if (arg.rules().stream().allMatch(Rule::isAllow)) {
+//                        VariableUtil.replaceVariables(arg.value(), v, ret, dollarBegin);
+//                    }
+//                }
+//                return ret;
+//            }));// FIXME: IDEA bug, work around here
+            task.getJvmArgumentProviders().add(getAllJvmArguments().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin))::get);
+            task.getJvmArgumentProviders().add(getAllConditionalJvmArguments().zip(variables, (args, v) -> {
                 var ret = new ObjectArrayList<String>();
                 for (Argument.Complex arg : args) {
                     if (arg.rules().stream().allMatch(Rule::isAllow)) {
@@ -56,7 +66,7 @@ public abstract class RunConfigImpl implements RunConfig {
                     }
                 }
                 return ret;
-            }));
+            })::get);
             task.getArgumentProviders().add(getAllGameArguments().zip(variables, (a, v) -> VariableUtil.replaceVariables(a, v, dollarBegin))::get);
             task.getArgumentProviders().add(getAllConditionalGameArguments().zip(variables, (args, v) -> {
                 var ret = new ObjectArrayList<String>();
